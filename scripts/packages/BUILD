@@ -137,3 +137,22 @@ genrule(
         " > $@\n",
     stamp = 1,
 )
+
+load(":wix/wix_msi.bzl", "wix_msi")
+
+wix_msi(
+    name = "windows-msi",
+    out = "bazel.msi",
+    template = "wix/bazelmsi.wxs",
+    release_binary = ":mock-bazel",
+    release_version = "0.99.0",
+    license = "wix/license.rtf",
+    icon = "//site:images/favicon.ico",
+    artwork_big = "wix/dialog.bmp",
+    artwork_small = "wix/banner.bmp",
+)
+
+cc_binary(
+    name = "mock-bazel",
+    srcs = ["wix/mock-bazel.cc"],
+)

@@ -513,3 +513,10 @@ load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
 sass_repositories()
 
 register_execution_platforms("//:default_host_platform")  # buildozer: disable=positional-args
+
+http_archive(
+    name = "wix_toolset",
+    url = "https://github.com/wixtoolset/wix3/releases/download/wix3111rtm/wix311-binaries.zip",
+    sha256 = "37f0a533b0978a454efb5dc3bd3598becf9660aaf4287e55bf68ca6b527d051d",
+    build_file_content = "exports_files(['candle.exe', 'light.exe'])",
+)

@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<!--
+  Copyright 2019 The Bazel Authors. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <Product Name='Bazel %{release-version}' Manufacturer='https://bazel.build/' Id='%{release-guid}' UpgradeCode='E9BB3288-3C42-42C0-938D-38E844A09583' Language='1033' Codepage='1252' Version='%{release-version}'>
+    <Package Platform='x64' Id='*' AdminImage='no' InstallPrivileges='limited' InstallScope='perUser' Description='Bazel %{release-version} installer' Manufacturer='The Bazel Authors (https://bazel.build/)' InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+
+    <Media Id='1' Cabinet='bazel.cab' EmbedCab='yes' />
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='InstallDirRoot' Name='bazel'>
+        <Directory Id='INSTALLDIR' Name='%{release-version}'>
+          <!-- Components are atomic resources (files, shortcuts, registry keys), that must be installed and removed together. -->
+          <Component Id='MainExecutable' Guid='E8F049EC-C5CB-4E03-8A3E-57C02A49A21b' Win64='yes'>
+            <File Id='BazelExe' Name='bazel.exe' Source='%{release-binary}' KeyPath='yes' Vital='yes' />
+          </Component>
+          <Component Id='InstallDirRoot' Guid='F5979A1F-44B2-4F8B-B7CA-E4C369D64B82'>
+            <RemoveFolder Id='InstallDirRoot' On='uninstall' />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+    <UIRef Id="WixUI_InstallDir" />
+
+    %{icon}
+
+    <Feature Id='Complete' Absent='disallow' AllowAdvertise='no' Display='expand' Level='1' ConfigurableDirectory='INSTALLDIR'>
+      <ComponentRef Id='InstallDirRoot' />
+      <ComponentRef Id='MainExecutable' />
+    </Feature>
+  </Product>
+</Wix>
