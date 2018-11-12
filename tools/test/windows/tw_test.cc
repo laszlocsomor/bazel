@@ -44,6 +44,7 @@ using bazel::tools::test_wrapper::testing::
 using bazel::tools::test_wrapper::testing::
     TestOnly_CreateUndeclaredOutputsManifest;
 using bazel::tools::test_wrapper::testing::TestOnly_CreateZip;
+using bazel::tools::test_wrapper::testing::TestOnly_EncodeAndAppendFileTo;
 using bazel::tools::test_wrapper::testing::TestOnly_GetEnv;
 using bazel::tools::test_wrapper::testing::TestOnly_GetFileListRelativeTo;
 using bazel::tools::test_wrapper::testing::TestOnly_GetMimeType;
@@ -428,7 +429,8 @@ TEST_F(TestWrapperWindowsTest, TestTee) {
   EXPECT_TRUE(CreatePipe(read3.GetPtr(), write3.GetPtr(), NULL, 0));
 
   std::unique_ptr<bazel::tools::test_wrapper::Tee> tee;
-  EXPECT_TRUE(TestOnly_CreateTee(read1, write2, write3, &tee));
+  EXPECT_TRUE(TestOnly_CreateTee(read1.Release(), write2.Release(),
+                                 write3.Release(), &tee));
 
   DWORD written, read;
   char content[100];
@@ -551,6 +553,56 @@ TEST_F(TestWrapperWindowsTest, TestCdataEncodeBufferDoubleOctets) {
       // Illegal double-octet sequences, both octets bad.
       "\xBF?"  // ...and 0xBF finishes that sequence
       "x", {});
+}
+
+TEST_F(TestWrapperWindowsTest, TestCdataEncodeFile) {
+  std::wstring tmpdir;
+  GET_TEST_TMPDIR(&tmpdir);
+
+  // Create a directory structure to parse.
+  std::wstring root = tmpdir + L"\\tmp" + WLINE;
+  EXPECT_TRUE(CreateDirectoryW(root.c_str(), NULL));
+  EXPECT_TRUE(
+      blaze_util::CreateDummyFile(
+          root + L"\\a",
+          "AB\xA\xC\xD"
+          "]]>"
+          "]]]>"
+          "\xC0\x80"
+          "a"
+          "\xED\x9F\xBF"
+          "b"
+          "\xEF\xBF\xB0"
+          "c"
+          "\xF7\xB0\x80\x81"
+          "d"
+          "]]>"));
+
+  ASSERT_TRUE(TestOnly_EncodeAndAppendFileTo(root + L"\\a", root + L"\\b"));
+
+  HANDLE h = CreateFileW((root + L"\\b").c_str(), GENERIC_READ,
+                         FILE_SHARE_READ | FILE_SHARE_DELETE, NULL,
+                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  ASSERT_NE(h, INVALID_HANDLE_VALUE);
+  char content[200];
+  DWORD read;
+  bool success = ReadFile(h, content, 200, &read, NULL) != FALSE;
+  CloseHandle(h);
+  EXPECT_TRUE(success);
+
+  ASSERT_EQ(std::string(content, read),
+            "AB\xA?\xD"
+            "]]>]]&gt;<![CDATA["
+            "]]]>]]&gt;<![CDATA["
+            "\xC0\x80"
+            "a"
+            "\xED\x9F\xBF"
+            "b"
+            "\xEF\xBF\xB0"
+            "c"
+            "\xF7\xB0\x80\x81"
+            "d"
+            "]]>]]&gt;<![CDATA[");
 }
 
 }  // namespace

@@ -104,7 +104,10 @@ class Tee {
 };
 
 // The main function of the test wrapper.
-int Main(int argc, wchar_t** argv);
+int TestWrapperMain(int argc, wchar_t** argv);
+
+// The main function of the test XML writer.
+int XmlWriterMain(int argc, wchar_t** argv);
 
 // The "testing" namespace contains functions that should only be used by tests.
 namespace testing {
@@ -153,6 +156,8 @@ bool TestOnly_CreateTee(void* /* HANDLE */ input, void* /* HANDLE */ output1,
 bool TestOnly_CdataEncodeBuffer(uint8_t* buffer, const size_t size,
                                 std::vector<uint8_t*>* cdata_end_locations);
 
+bool TestOnly_EncodeAndAppendFileTo(const std::wstring& abs_input,
+                                    const std::wstring& abs_output);
 
 }  // namespace testing
 

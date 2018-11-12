@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test wrapper implementation for Windows.
-// Design:
-// https://github.com/laszlocsomor/proposals/blob/win-test-runner/designs/2018-07-18-windows-native-test-runner.md
+// Test XML writer implementation for Windows.
 
 #include "tools/test/windows/tw.h"
 
 int wmain(int argc, wchar_t** argv) {
-  return bazel::tools::test_wrapper::TestWrapperMain(argc, argv);
+  return bazel::tools::test_wrapper::XmlWriterMain(argc, argv);
 }
