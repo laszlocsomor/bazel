@@ -137,13 +137,9 @@ static jlong PtrAsJlong(void* p) { return reinterpret_cast<jlong>(p); }
 // We need this function to prevent the child process from inheriting unintended
 // handles. See http://support.microsoft.com/kb/315939
 static std::wstring CreateProcessWithExplicitHandles(
-    /* __inout_opt */ LPWSTR lpCommandLine,
-    /* __in_opt    */ LPVOID lpEnvironment,
-    /* __in_opt    */ LPCWSTR lpCurrentDirectory,
-    /* __in        */ LPSTARTUPINFOW lpStartupInfo,
-    /* __out       */ LPPROCESS_INFORMATION lpProcessInformation,
-    /* __in        */ DWORD cHandlesToInherit,
-    /* __in_ecount(cHandlesToInherit) */ HANDLE* handlesToInherit) {
+    HANDLE stdin_h, HANDLE stdout_h, HANDLE stderr_h, LPWSTR lpCommandLine,
+    LPVOID lpEnvironment, const std::wstring& cwd,
+    LPPROCESS_INFORMATION lpProcessInformation) {
   // kMaxCmdline value: see lpCommandLine parameter of CreateProcessW.
   static constexpr size_t kMaxCmdline = 32767;
 
@@ -158,58 +154,18 @@ static std::wstring CreateProcessWithExplicitHandles(
         cmd_sample.c_str(), error_msg.str().c_str());
   }
 
-  if (cHandlesToInherit >= 0xFFFFFFFF / sizeof(HANDLE)) {
+  std::unique_ptr<bazel::windows::AutoAttributeList> attr_list;
+  std::wstring werror;
+  if (!bazel::windows::AutoAttributeList::Create(stdin_h, stdout_h, stderr_h,
+                                                 &attr_list, &werror)) {
     return bazel::windows::MakeErrorMessage(
-        WSTR(__FILE__), __LINE__, L"CreateProcessWithExplicitHandles",
-        lpCommandLine, L"too many handles to inherit");
+        WSTR(__FILE__), __LINE__, L"CreateProcessWithExplicitHandles", L"...",
+        werror);
   }
 
-  if (lpStartupInfo->cb != sizeof(*lpStartupInfo)) {
-    return bazel::windows::MakeErrorMessage(
-        WSTR(__FILE__), __LINE__, L"CreateProcessWithExplicitHandles",
-        lpCommandLine, L"bad lpStartupInfo");
-  }
+  STARTUPINFOEXW startup_info;
+  attr_list->InitStartupInfoExW(&startup_info);
 
-  SIZE_T size = 0;
-  if (!InitializeProcThreadAttributeList(NULL, 1, 0, &size) &&
-      GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-    DWORD err_code = GetLastError();
-    return bazel::windows::MakeErrorMessage(WSTR(__FILE__), __LINE__,
-                                            L"CreateProcessWithExplicitHandles",
-                                            lpCommandLine, err_code);
-  }
-
-  LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList =
-      reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(
-          HeapAlloc(GetProcessHeap(), 0, size));
-  if (lpAttributeList == NULL) {
-    DWORD err_code = GetLastError();
-    return bazel::windows::MakeErrorMessage(WSTR(__FILE__), __LINE__,
-                                            L"CreateProcessWithExplicitHandles",
-                                            lpCommandLine, err_code);
-  }
-
-  if (!InitializeProcThreadAttributeList(lpAttributeList, 1, 0, &size)) {
-    DWORD err_code = GetLastError();
-    return bazel::windows::MakeErrorMessage(WSTR(__FILE__), __LINE__,
-                                            L"CreateProcessWithExplicitHandles",
-                                            lpCommandLine, err_code);
-  }
-  if (!UpdateProcThreadAttribute(
-          lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-          handlesToInherit, cHandlesToInherit * sizeof(HANDLE), NULL, NULL)) {
-    DWORD err_code = GetLastError();
-    return bazel::windows::MakeErrorMessage(WSTR(__FILE__), __LINE__,
-                                            L"CreateProcessWithExplicitHandles",
-                                            lpCommandLine, err_code);
-  }
-
-  STARTUPINFOEXW info;
-  ZeroMemory(&info, sizeof(info));
-  info.StartupInfo = *lpStartupInfo;
-  info.StartupInfo.cb = sizeof(info);
-  info.lpAttributeList = lpAttributeList;
-  DWORD createproc_err = 0;
   if (!CreateProcessW(
           /* lpApplicationName */ NULL,
           /* lpCommandLine */ lpCommandLine,
@@ -221,20 +177,13 @@ static std::wstring CreateProcessWithExplicitHandles(
               | CREATE_SUSPENDED  // So that it doesn't start a new job itself
               | EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
           /* lpEnvironment */ lpEnvironment,
-          /* lpCurrentDirectory */ lpCurrentDirectory,
-          /* lpStartupInfo */ &info.StartupInfo,
+          /* lpCurrentDirectory */ cwd.empty() ? NULL : cwd.c_str(),
+          /* lpStartupInfo */ &startup_info.StartupInfo,
           /* lpProcessInformation */ lpProcessInformation)) {
-    createproc_err = GetLastError();
-  }
-
-  DeleteProcThreadAttributeList(lpAttributeList);
-  if (lpAttributeList) {
-    HeapFree(GetProcessHeap(), 0, lpAttributeList);
-  }
-  if (createproc_err) {
+    DWORD err = GetLastError();
     return bazel::windows::MakeErrorMessage(WSTR(__FILE__), __LINE__,
                                             L"CreateProcessW", lpCommandLine,
-                                            createproc_err);
+                                            err);
   }
   return L"";
 }
@@ -299,7 +248,6 @@ Java_com_google_devtools_build_lib_windows_jni_WindowsProcesses_nativeCreateProc
   bazel::windows::AutoHandle stderr_process;
   bazel::windows::AutoHandle thread;
   PROCESS_INFORMATION process_info = {0};
-  STARTUPINFOW startup_info = {0};
   JOBOBJECT_EXTENDED_LIMIT_INFORMATION job_info = {0};
 
   JavaByteArray env_map(env, java_env);
@@ -431,21 +379,10 @@ Java_com_google_devtools_build_lib_windows_jni_WindowsProcesses_nativeCreateProc
     return PtrAsJlong(result);
   }
 
-  startup_info.cb = sizeof(STARTUPINFOW);
-  startup_info.hStdInput = stdin_process;
-  startup_info.hStdOutput = stdout_process;
-  startup_info.hStdError = stderr_process;
-  startup_info.dwFlags |= STARTF_USESTDHANDLES;
-
-  HANDLE handlesToInherit[3] = {stdin_process, stdout_process, stderr_process};
-  std::wstring err_msg(CreateProcessWithExplicitHandles(
-      /* lpCommandLine */ mutable_commandline.get(),
-      /* lpEnvironment */ env_map.ptr(),
-      /* lpCurrentDirectory */ cwd.empty() ? nullptr : cwd.c_str(),
-      /* lpStartupInfo */ &startup_info,
-      /* lpProcessInformation */ &process_info,
-      /* cHandlesToInherit */ 3,
-      /* handlesToInherit */ handlesToInherit));
+  std::wstring err_msg =
+      CreateProcessWithExplicitHandles(
+          stdin_process, stdout_process, stderr_process,
+          mutable_commandline.get(), env_map.ptr(), cwd, &process_info);
 
   if (!err_msg.empty()) {
     result->error_ = err_msg;
