@@ -97,14 +97,11 @@ sh_test(
     name = "java_integration_test",
     size = "large",
     srcs = ["java_integration_test.sh"],
+    deps = ["@bazel_tools//tools/bash/runfiles"],
     args = ["$(JAVABASE)"],
     data = [
         ":test-deps",
         "//src/test/shell:shell_utils",
-    ],
-    shard_count = 5,
-    tags = [
-        "no_windows",
     ],
     toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
 )
