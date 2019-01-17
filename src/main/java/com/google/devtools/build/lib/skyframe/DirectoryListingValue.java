@@ -99,6 +99,7 @@ public abstract class DirectoryListingValue implements SkyValue {
 
     public RegularDirectoryListingValue(DirectoryListingStateValue directoryListingStateValue) {
       this.directoryListingStateValue = directoryListingStateValue;
+      System.err.printf(" | DEBUG | RegularDirectoryListingValue.ctor(0x%08x)%n", this.hashCode());
     }
 
     @Override
@@ -135,6 +136,7 @@ public abstract class DirectoryListingValue implements SkyValue {
         DirectoryListingStateValue directoryListingStateValue) {
       this.realDirRootedPath = realDirRootedPath;
       this.directoryListingStateValue = directoryListingStateValue;
+      System.err.printf(" | DEBUG | DifferentRealPathDirectoryListingValue.ctor(0x%08x)%n", this.hashCode());
     }
 
     public RootedPath getRealDirRootedPath() {

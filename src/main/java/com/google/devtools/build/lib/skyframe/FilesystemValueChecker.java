@@ -505,6 +505,12 @@ public class FilesystemValueChecker {
                     numKeysChecked.get(),
                     numKeysScanned.get()));
           }
+          System.err.println(
+              String.format(
+                  " | DEBUG | FilesystemValueChecker: spent %d ms checking %d filesystem nodes (%d scanned)",
+                  TimeUnit.MILLISECONDS.convert(elapsedTimeNanos, TimeUnit.NANOSECONDS),
+                  numKeysChecked.get(),
+                  numKeysScanned.get()));
         };
     try (AutoProfiler prof = AutoProfiler.create(elapsedTimeReceiver)) {
       for (final SkyKey key : keys) {

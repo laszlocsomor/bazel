@@ -38,6 +38,7 @@ public final class DirectoryListingFunction implements SkyFunction {
     }
 
     RootedPath realDirRootedPath = dirFileValue.realRootedPath();
+    System.err.printf(" | DEBUG | DirectoryListingFunction.compute, path=(%s) real=(%s)%n", dirRootedPath, realDirRootedPath);
     if (!dirFileValue.isDirectory()) {
       // Recall that the directory is assumed to exist (see DirectoryListingValue#key).
       throw new DirectoryListingFunctionException(new InconsistentFilesystemException(
@@ -45,6 +46,7 @@ public final class DirectoryListingFunction implements SkyFunction {
               + "the build?"));
     }
 
+    System.err.printf(" | DEBUG | DirectoryListingFunction.compute, make DirectoryListingStateValue.key path=(%s)%n", realDirRootedPath);
     DirectoryListingStateValue directoryListingStateValue =
        (DirectoryListingStateValue) env.getValue(DirectoryListingStateValue.key(
            realDirRootedPath));
@@ -52,7 +54,9 @@ public final class DirectoryListingFunction implements SkyFunction {
       return null;
     }
 
-    return DirectoryListingValue.value(dirRootedPath, dirFileValue, directoryListingStateValue);
+    SkyValue res = DirectoryListingValue.value(dirRootedPath, dirFileValue, directoryListingStateValue);
+    System.err.printf(" | DEBUG | DirectoryListingFunction.compute, return; path=(%s) real=(%s) res(0x%08x)%n", dirRootedPath, realDirRootedPath, res.hashCode());
+    return res;
   }
 
   @Nullable

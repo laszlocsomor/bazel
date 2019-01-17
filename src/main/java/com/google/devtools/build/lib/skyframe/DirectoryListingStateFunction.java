@@ -37,6 +37,7 @@ public class DirectoryListingStateFunction implements SkyFunction {
   public DirectoryListingStateValue compute(SkyKey skyKey, Environment env)
       throws DirectoryListingStateFunctionException, InterruptedException {
     RootedPath dirRootedPath = (RootedPath) skyKey.argument();
+    System.err.printf(" | DEBUG | DirectoryListingStateFunction.compute, path=(%s) key=(%s)%n", dirRootedPath, skyKey);
 
     try {
       externalFilesHelper.maybeHandleExternalFile(dirRootedPath, env);

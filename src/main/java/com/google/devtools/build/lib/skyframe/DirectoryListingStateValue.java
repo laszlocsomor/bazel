@@ -46,6 +46,17 @@ public final class DirectoryListingStateValue implements SkyValue {
 
   private DirectoryListingStateValue(Collection<Dirent> dirents) {
     this.compactSortedDirents = CompactSortedDirents.create(dirents);
+    System.err.printf(" | DEBUG | DirectoryListingStateValue ctor, dirents=(%s)%n",
+        com.google.common.base.Joiner.on(", ").join(
+            com.google.common.collect.Iterables.transform(
+                dirents,
+                new com.google.common.base.Function<Dirent, String>() {
+                  @Override
+                  public String apply(Dirent e) {
+                    return e.getName() + ":" + e.getType();
+                  }
+                })));
+    Thread.dumpStack();
   }
 
   @AutoCodec.Instantiator
