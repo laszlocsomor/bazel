@@ -142,12 +142,25 @@ HANDLE FopenRead(const std::wstring& unc_path) {
                      FILE_ATTRIBUTE_NORMAL, NULL);
 }
 
-HANDLE FopenContents(wchar_t* wline, const char* contents) {
+HANDLE FopenContents(const wchar_t* wline, const char* contents, size_t size) {
   std::wstring tmpdir;
   GET_TEST_TMPDIR(&tmpdir);
   std::wstring filename = tmpdir + L"\\tmp" + wline;
-  EXPECT_TRUE(blaze_util::CreateDummyFile(filename, contents));
+  {
+    bazel::windows::AutoHandle h(
+        CreateFileW(bazel::windows::AddUncPrefixMaybe(filename).c_str(),
+                    GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+                    FILE_ATTRIBUTE_NORMAL, NULL));
+    DWORD written;
+    if (!WriteFile(h, contents, size, &written, NULL)) {
+      return INVALID_HANDLE_VALUE;
+    }
+  }
   return FopenRead(filename);
+}
+
+HANDLE FopenContents(const wchar_t* wline, const char* contents) {
+  return FopenContents(wline, contents, strlen(contents));
 }
 
 TEST_F(TestWrapperWindowsTest, TestGetFileListRelativeTo) {
@@ -471,24 +484,32 @@ TEST_F(TestWrapperWindowsTest, TestTee) {
   write1 = INVALID_HANDLE_VALUE;  // closes handle so the Tee thread can exit
 }
 
-void AssertCdataEncodeBuffer(const char* input, DWORD size,
+void AssertCdataEncodeBuffer(const wchar_t* wline, const char* input, DWORD size,
                              const char* expected_output) {
+  bazel::windows::AutoHandle h(FopenContents(wline, input, size));
+  EXPECT_TRUE(h.IsValid());
+
+  std::unique_ptr<IFStream> ifstm(
+      TestOnly_CreateIFStream(h, size > 6 ? size / 2 : size));
+  EXPECT_NE(ifstm, nullptr);
+
   std::stringstream out_stm;
-  ASSERT_TRUE(TestOnly_CdataEncode(reinterpret_cast<const uint8_t*>(input),
-                                   size, &out_stm));
+  ASSERT_TRUE(TestOnly_CdataEncode(ifstm.get(), &out_stm));
   ASSERT_EQ(expected_output, out_stm.str());
 }
 
-void AssertCdataEncodeBuffer(const char* input, const char* expected_output) {
-  AssertCdataEncodeBuffer(input, strlen(input), expected_output);
+void AssertCdataEncodeBuffer(const wchar_t* wline, const char* input,
+                             const char* expected_output) {
+  AssertCdataEncodeBuffer(wline, input, strlen(input), expected_output);
 }
 
 TEST_F(TestWrapperWindowsTest, TestCdataEscapeNullTerminator) {
-  AssertCdataEncodeBuffer("x\0y", 3, "x?y");
+  AssertCdataEncodeBuffer(WLINE, "x\0y", 3, "x?y");
 }
 
 TEST_F(TestWrapperWindowsTest, TestCdataEscapeCdataEndings) {
   AssertCdataEncodeBuffer(
+      WLINE,
       // === Input ===
       // CDATA end sequence, followed by some arbitrary octet.
       "]]>x"
@@ -504,7 +525,8 @@ TEST_F(TestWrapperWindowsTest, TestCdataEscapeCdataEndings) {
 }
 
 TEST_F(TestWrapperWindowsTest, TestCdataEscapeSingleOctets) {
-  AssertCdataEncodeBuffer(// === Input ===
+  AssertCdataEncodeBuffer(WLINE,
+                          // === Input ===
                           // Legal single-octets.
                           "AB\x9\xA\xD\x20\x7F"
                           // Illegal single-octets.
@@ -522,6 +544,7 @@ TEST_F(TestWrapperWindowsTest, TestCdataEscapeSingleOctets) {
 TEST_F(TestWrapperWindowsTest, TestCdataEscapeDoubleOctets) {
   // Legal range: [\xc0-\xdf][\x80-\xbf]
   AssertCdataEncodeBuffer(
+      WLINE,
       "x"
       // Legal double-octet sequences.
       "\xC0\x80"
@@ -559,6 +582,7 @@ TEST_F(TestWrapperWindowsTest, TestCdataEscapeAndAppend) {
   GET_TEST_TMPDIR(&tmpdir);
 
   AssertCdataEncodeBuffer(
+      WLINE,
       // === Input ===
       "AB\xA\xC\xD"
       "]]>"

@@ -1481,83 +1481,65 @@ int RunSubprocess(const Path& test_path,
 //
 // Every octet-sequence matching one of these regexps will be left alone, all
 // other octet-sequences will be replaced by '?' characters.
-bool CdataEscape(const uint8_t* input, const DWORD size,
-                 std::basic_ostream<char>* out) {
-  // We aren't modifying the input, so const_cast is fine.
-  uint8_t* p = const_cast<uint8_t*>(input);
-
-  for (DWORD i = 0; i < size; ++i, ++p) {
-    if (p[0] == ']' && (i + 2 < size) && p[1] == ']' && p[2] == '>') {
+bool CdataEscape(IFStream* stm, std::basic_ostream<char>* out) {
+  int cur = 0;
+  uint8_t p[3];
+  while ((cur = stm->Get()) < 256) {
+    if (!out->good()) {
+      return false;
+    }
+    if (cur == ']' && stm->Peek(2, p) && p[0] == ']' && p[1] == '>') {
       *out << "]]>]]<![CDATA[>";
-      if (!out->good()) {
-        return false;
-      }
-      i += 2;
-      p += 2;
-    } else if (*p == 0x9 || *p == 0xA || *p == 0xD ||
-               (*p >= 0x20 && *p <= 0x7F)) {
+      stm->Get();
+      stm->Get();
+    } else if (cur == 0x9 || cur == 0xA || cur == 0xD ||
+               (cur >= 0x20 && cur <= 0x7F)) {
       // Matched legal single-octet sequence.
-      *out << *p;
-      if (!out->good()) {
-        return false;
-      }
-    } else if ((i + 1 < size) && p[0] >= 0xC0 && p[0] <= 0xDF && p[1] >= 0x80 &&
-               p[1] <= 0xBF) {
+      *out << (char) cur;
+    } else if (stm->Peek(1, p) && cur >= 0xC0 && cur <= 0xDF && p[0] >= 0x80 &&
+               p[0] <= 0xBF) {
       // Matched legal double-octet sequence. Skip the next octet.
-      *out << p[0] << p[1];
-      if (!out->good()) {
-        return false;
-      }
-      i += 1;
-      p += 1;
-    } else if ((i + 2 < size) &&
-               ((p[0] >= 0xE0 && p[0] <= 0xEC && p[1] >= 0x80 && p[1] <= 0xBF &&
-                 p[2] >= 0x80 && p[2] <= 0xBF) ||
-                (p[0] == 0xED && p[1] >= 0x80 && p[1] <= 0x9F && p[2] >= 0x80 &&
-                 p[2] <= 0xBF) ||
-                (p[0] == 0xEE && p[1] >= 0x80 && p[1] <= 0xBF && p[2] >= 0x80 &&
-                 p[2] <= 0xBF) ||
-                (p[0] == 0xEF && p[1] >= 0x80 && p[1] <= 0xBE && p[2] >= 0x80 &&
-                 p[2] <= 0xBF) ||
-                (p[0] == 0xEF && p[1] == 0xBF && p[2] >= 0x80 &&
-                 p[2] <= 0xBD))) {
+      *out << (char) cur << p[0];
+      stm->Get();
+    } else if (stm->Peek(2, p) &&
+               ((cur >= 0xE0 && cur <= 0xEC && p[0] >= 0x80 && p[0] <= 0xBF &&
+                 p[1] >= 0x80 && p[1] <= 0xBF) ||
+                (cur == 0xED && p[0] >= 0x80 && p[0] <= 0x9F && p[1] >= 0x80 &&
+                 p[1] <= 0xBF) ||
+                (cur == 0xEE && p[0] >= 0x80 && p[0] <= 0xBF && p[1] >= 0x80 &&
+                 p[1] <= 0xBF) ||
+                (cur == 0xEF && p[0] >= 0x80 && p[0] <= 0xBE && p[1] >= 0x80 &&
+                 p[1] <= 0xBF) ||
+                (cur == 0xEF && p[0] == 0xBF && p[1] >= 0x80 &&
+                 p[1] <= 0xBD))) {
       // Matched legal triple-octet sequence. Skip the next two octets.
-      *out << p[0] << p[1] << p[2];
-      if (!out->good()) {
-        return false;
-      }
-      i += 2;
-      p += 2;
-    } else if ((i + 3 < size) && p[0] >= 0xF0 && p[0] <= 0xF7 && p[1] >= 0x80 &&
-               p[1] <= 0xBF && p[2] >= 0x80 && p[2] <= 0xBF && p[3] >= 0x80 &&
-               p[3] <= 0xBF) {
+      *out << (char) cur << p[0] << p[1];
+      stm->Get();
+      stm->Get();
+    } else if (stm->Peek(3, p) && cur >= 0xF0 && cur <= 0xF7 && p[0] >= 0x80 &&
+               p[0] <= 0xBF && p[1] >= 0x80 && p[1] <= 0xBF && p[2] >= 0x80 &&
+               p[2] <= 0xBF) {
       // Matched legal quadruple-octet sequence. Skip the next three octets.
-      *out << p[0] << p[1] << p[2] << p[3];
-      if (!out->good()) {
-        return false;
-      }
-      i += 3;
-      p += 3;
+      *out << (char) cur << p[0] << p[1] << p[2];
+      stm->Get();
+      stm->Get();
+      stm->Get();
     } else {
       // Illegal octet; replace.
       *out << '?';
-      if (!out->good()) {
-        return false;
-      }
     }
   }
-  return true;
+  return cur == IFStream::kIFStreamErrorEOF && out->good();
 }
 
 bool CdataEscapeAndAppend(const Path& input, std::ofstream* out_stm) {
-  DWORD size;
-  std::unique_ptr<uint8_t[]> data;
-  if (!ReadCompleteFile(input, &data, &size)) {
-    LogError(__LINE__, input.Get());
+  bazel::windows::AutoHandle h;
+  if (!OpenExistingFileForRead(input, &h)) {
+    LogError(__LINE__, input.Get().c_str());
     return false;
   }
-
-  return CdataEscape(data.get(), size, out_stm);
+  std::unique_ptr<IFStream> in(IFStreamImpl::Create(h));
+  return CdataEscape(in.get(), out_stm);
 }
 
 bool GetTestName(std::wstring* result) {
@@ -1978,9 +1960,8 @@ bool TestOnly_CreateTee(bazel::windows::AutoHandle* input,
   return TeeImpl::Create(input, output1, output2, result);
 }
 
-bool TestOnly_CdataEncode(const uint8_t* input, const DWORD size,
-                          std::basic_ostream<char>* out_stm) {
-  return CdataEscape(input, size, out_stm);
+bool TestOnly_CdataEncode(IFStream* in_stm, std::basic_ostream<char>* out_stm) {
+  return CdataEscape(in_stm, out_stm);
 }
 
 IFStream* TestOnly_CreateIFStream(HANDLE handle, DWORD page_size) {
