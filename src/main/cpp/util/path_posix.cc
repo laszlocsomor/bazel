@@ -65,7 +65,7 @@ std::string MakeAbsolute(const std::string &path) {
     return path;
   }
 
-  return JoinPath(blaze_util::GetCwd(), path);
+  return JoinPath(Path::Cwd().AsAscii(), path);
 }
 
 std::string ResolveEnvvars(const std::string &path) {
@@ -92,6 +92,26 @@ std::string ResolveEnvvars(const std::string &path) {
 
 std::string MakeAbsoluteAndResolveEnvvars(const std::string &path) {
   return MakeAbsolute(ResolveEnvvars(path));
+}
+
+Path Path::Cwd() {
+  char cwdbuf[PATH_MAX];
+  if (getcwd(cwdbuf, sizeof cwdbuf) == NULL) {
+    BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
+        << "getcwd() failed: " << GetLastErrorString();
+  }
+  Path p;
+  p.path_ = cwdbuf;
+  return p;
+}
+
+bool Path::Set(const std::string& path) {
+  path_ = path;
+  return true;
+}
+
+std::string Path::AsAscii() const {
+  return path_;
 }
 
 }  // namespace blaze_util

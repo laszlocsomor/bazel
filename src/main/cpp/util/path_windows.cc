@@ -461,9 +461,9 @@ static bool AsAbsoluteWindowsPathImpl(const std::wstring& path,
   }
   if (!IsRootOrAbsolute(*result, /* must_be_root */ false)) {
     if (result->empty() || (result->size() == 1 && (*result)[0] == '.')) {
-      *result = GetCwdW();
+      *result = Path::Cwd().OsPath();
     } else {
-      *result = GetCwdW() + L"\\" + *result;
+      *result = Path::Cwd().OsPath() + L"\\" + *result;
     }
   }
   if (!HasUncPrefix(result->c_str())) {
@@ -584,7 +584,7 @@ bool IsRootDirectoryW(const std::wstring& path) {
 }
 
 static char GetCurrentDrive() {
-  std::wstring cwd = GetCwdW();
+  std::wstring cwd = Path::Cwd().OsPath();
   wchar_t wdrive = RemoveUncPrefixMaybe(cwd.c_str())[0];
   wchar_t offset = wdrive >= L'A' && wdrive <= L'Z' ? L'A' : L'a';
   return 'a' + wdrive - offset;
@@ -593,6 +593,54 @@ static char GetCurrentDrive() {
 bool TestOnly_NormalizeWindowsPath(const std::string& path,
                                    std::string* result) {
   return NormalizeWindowsPath(path, result);
+}
+
+Path Path::Cwd() {
+  static constexpr size_t kBufSmall = MAX_PATH;
+  WCHAR buf[kBufSmall];
+  DWORD len = GetCurrentDirectoryW(kBufSmall, buf);
+  if (len == 0) {
+    DWORD err = GetLastError();
+    BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
+        << "GetCurrentDirectoryW failed (error " << err << ")";
+  }
+
+  WCHAR* pbuf = nullptr;
+  if (len < kBufSmall) {
+    pbuf = buf;
+  } else {
+    std::unique_ptr<WCHAR[]> buf_big(new WCHAR[len]);
+    len = GetCurrentDirectoryW(len, buf_big.get());
+    if (len == 0) {
+      DWORD err = GetLastError();
+      BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
+          << "GetCurrentDirectoryW failed (error " << err << ")";
+    }
+    pbuf = buf_big.get();
+  }
+  for (WCHAR* p = pbuf; *p; ++p) {
+    *p = towlower(*p);
+  }
+
+  Path p;
+  p.path_ = pbuf;
+  return p;
+}
+
+bool Path::Set(const std::string& path) {
+  std::wstring wpath;
+  if (AsWindowsPath(path, &wpath, nullptr)) {
+    path_ = wpath;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+std::string Path::AsAscii() const {
+  std::string p = WstringToCstring(RemoveUncPrefixMaybe(path_.c_str())).get();
+  std::replace(p.begin(), p.end(), '\\', '/');
+  return p;
 }
 
 }  // namespace blaze_util

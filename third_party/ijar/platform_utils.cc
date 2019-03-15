@@ -105,7 +105,7 @@ bool read_file(const char* path, void* buffer, size_t size) {
   return blaze_util::ReadFile(path, buffer, size);
 }
 
-string get_cwd() { return blaze_util::GetCwd(); }
+string get_cwd() { return blaze_util::Path::Cwd().AsAscii(); }
 
 bool make_dirs(const char* path, unsigned int mode) {
 #ifndef _WIN32

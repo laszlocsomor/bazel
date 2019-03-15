@@ -1334,10 +1334,11 @@ static void ParseOptions(int argc, const char *argv[]) {
 
 // Compute the globals globals->cwd and globals->workspace.
 static void ComputeWorkspace(const WorkspaceLayout *workspace_layout) {
-  globals->cwd = blaze_util::MakeCanonical(blaze_util::GetCwd().c_str());
+  globals->cwd = blaze_util::MakeCanonical(
+      blaze_util::Path::Cwd().AsAscii().c_str());
   if (globals->cwd.empty()) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "blaze_util::MakeCanonical('" << blaze_util::GetCwd()
+        << "blaze_util::MakeCanonical('" << blaze_util::Path::Cwd().AsAscii()
         << "') failed: " << GetLastErrorString();
   }
   globals->workspace = workspace_layout->GetWorkspace(globals->cwd);

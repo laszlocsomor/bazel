@@ -274,7 +274,7 @@ class CharPP {
 
 void ExecuteProgram(const string& exe, const vector<string>& args_vector) {
   BAZEL_LOG(INFO) << "Invoking binary " << exe << " in "
-                  << blaze_util::GetCwd();
+                  << blaze_util::Path::Cwd().OsPath();
 
   // TODO(jmmv): This execution does not respect any settings we might apply
   // to the server process with ConfigureDaemonProcess when executed in the
@@ -653,7 +653,7 @@ uint64_t AcquireLock(const string& output_base, bool batch_mode, bool block,
   // will have a cwd long enough to overflow that, and nothing currently uses
   // the rest of the lock file anyway.
   dprintf(lockfd, "pid=%d\nowner=client\n", getpid());
-  string cwd = blaze_util::GetCwd();
+  string cwd = blaze_util::Path::Cwd().OsPath();
   dprintf(lockfd, "cwd=%s\n", cwd.c_str());
   if (const char *tty = ttyname(STDIN_FILENO)) {  // NOLINT (single-threaded)
     dprintf(lockfd, "tty=%s\n", tty);

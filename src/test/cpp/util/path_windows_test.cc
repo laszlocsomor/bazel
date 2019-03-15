@@ -245,7 +245,7 @@ TEST(PathWindowsTest, TestAsWindowsPath) {
 
   // Absolute-on-current-drive path gets a drive letter.
   ASSERT_TRUE(AsWindowsPath("\\foo", &actual, nullptr));
-  ASSERT_EQ(wstring(1, GetCwd()[0]) + L":\\foo", actual);
+  ASSERT_EQ(wstring(1, Path::Cwd().OsPath()[0]) + L":\\foo", actual);
 
   // Even for long paths, AsWindowsPath doesn't add a "\\?\" prefix (it's the
   // caller's duty to do so).
@@ -278,10 +278,11 @@ TEST(PathWindowsTest, TestAsAbsoluteWindowsPath) {
   ASSERT_EQ(L"\\\\?\\c:\\non-existent", actual);
 
   WCHAR cwd[MAX_PATH];
-  wstring cwdw(CstringToWstring(GetCwd().c_str()).get());
   wstring expected =
-      wstring(L"\\\\?\\") + cwdw +
-      ((cwdw.back() == L'\\') ? L"non-existent" : L"\\non-existent");
+      wstring(L"\\\\?\\") + Path::Cwd().OsPath() +
+      ((Path::Cwd().OsPath().back() == L'\\')
+            ? L"non-existent"
+            : L"\\non-existent");
   ASSERT_TRUE(AsAbsoluteWindowsPath("non-existent", &actual, nullptr));
   ASSERT_EQ(actual, expected);
 
@@ -380,8 +381,10 @@ TEST(PathWindowsTest, MakeAbsolute) {
   EXPECT_EQ("c:\\foo\\bar", MakeAbsolute("C:/foo/bar"));
   EXPECT_EQ("c:\\foo\\bar", MakeAbsolute("C:\\foo\\bar\\"));
   EXPECT_EQ("c:\\foo\\bar", MakeAbsolute("C:/foo/bar/"));
-  EXPECT_EQ(blaze_util::AsLower(blaze_util::GetCwd()) + "\\foo",
-            MakeAbsolute("foo"));
+
+  std::string cwd = blaze_util::Path::Cwd().AsAscii();
+  std::replace(cwd.begin(), cwd.end(), '/', '\\');
+  EXPECT_EQ(_stricmp((cwd + "\\foo").c_str(), MakeAbsolute("foo").c_str()), 0);
 
   EXPECT_EQ("nul", MakeAbsolute("NUL"));
   EXPECT_EQ("nul", MakeAbsolute("Nul"));

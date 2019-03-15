@@ -121,7 +121,7 @@ bool IsArg(const string& arg) {
 
 std::string AbsolutePathFromFlag(const std::string& value) {
   if (value.empty()) {
-    return blaze_util::GetCwd();
+    return blaze_util::Path::Cwd().AsAscii();
   } else {
     return blaze_util::MakeAbsolute(value);
   }

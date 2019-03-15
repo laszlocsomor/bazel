@@ -799,43 +799,6 @@ bool MakeDirectories(const string& path, unsigned int mode) {
   return MakeDirectoriesW(wpath, mode);
 }
 
-static inline void ToLowerW(WCHAR* p) {
-  while (*p) {
-    *p++ = towlower(*p);
-  }
-}
-
-std::wstring GetCwdW() {
-  static constexpr size_t kBufSmall = MAX_PATH;
-  WCHAR buf[kBufSmall];
-  DWORD len = GetCurrentDirectoryW(kBufSmall, buf);
-  if (len == 0) {
-    DWORD err = GetLastError();
-    BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "GetCurrentDirectoryW failed (error " << err << ")";
-  }
-
-  if (len < kBufSmall) {
-    ToLowerW(buf);
-    return std::wstring(buf);
-  }
-
-  unique_ptr<WCHAR[]> buf_big(new WCHAR[len]);
-  len = GetCurrentDirectoryW(len, buf_big.get());
-  if (len == 0) {
-    DWORD err = GetLastError();
-    BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "GetCurrentDirectoryW failed (error " << err << ")";
-  }
-  ToLowerW(buf_big.get());
-  return std::wstring(buf_big.get());
-}
-
-string GetCwd() {
-  return string(
-      WstringToCstring(RemoveUncPrefixMaybe(GetCwdW().c_str())).get());
-}
-
 bool ChangeDirectory(const string& path) {
   string spath;
   string error;

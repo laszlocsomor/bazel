@@ -399,15 +399,6 @@ bool MakeDirectories(const string &path, unsigned int mode) {
   return MakeDirectories(path, mode, true);
 }
 
-string GetCwd() {
-  char cwdbuf[PATH_MAX];
-  if (getcwd(cwdbuf, sizeof cwdbuf) == NULL) {
-    BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
-        << "getcwd() failed: " << GetLastErrorString();
-  }
-  return string(cwdbuf);
-}
-
 bool ChangeDirectory(const string& path) {
   return chdir(path.c_str()) == 0;
 }

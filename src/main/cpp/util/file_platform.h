@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include "src/main/cpp/util/path_platform.h"
+
 namespace blaze_util {
 
 class IPipe;
@@ -177,10 +179,6 @@ void SyncFile(const std::string& path);
 // Returns false on failure, sets errno.
 bool MakeDirectories(const std::string &path, unsigned int mode);
 
-// Returns the current working directory.
-// The path is platform-specific (e.g. Windows path of Windows) and absolute.
-std::string GetCwd();
-
 // Changes the current working directory to `path`, returns true upon success.
 bool ChangeDirectory(const std::string& path);
 
@@ -206,7 +204,6 @@ void ForEachDirectoryEntry(const std::string &path,
                            DirectoryEntryConsumer *consume);
 
 #if defined(_WIN32) || defined(__CYGWIN__)
-std::wstring GetCwdW();
 bool MakeDirectoriesW(const std::wstring &path, unsigned int mode);
 
 // Resolve a symlink to its target.

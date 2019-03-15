@@ -134,7 +134,8 @@ static wstring GetManifestJarDir(const wstring& binary_base_path) {
     abs_manifest_jar_dir = binary_base_path.substr(0, slash);
   }
   if (!blaze_util::IsAbsolute(binary_base_path)) {
-    abs_manifest_jar_dir = blaze_util::GetCwdW() + L"\\" + abs_manifest_jar_dir;
+    abs_manifest_jar_dir =
+        blaze_util::Path::Cwd().OsPath() + L"\\" + abs_manifest_jar_dir;
   }
   wstring result;
   if (!NormalizePath(abs_manifest_jar_dir, &result)) {

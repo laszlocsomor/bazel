@@ -94,22 +94,22 @@ TEST(PathPosixTest, JoinPath) {
   ASSERT_EQ("/", path);
 }
 
-TEST(PathPosixTest, GetCwd) {
+TEST(PathPosixTest, GetCwdTest) {
   char cwdbuf[PATH_MAX];
   ASSERT_EQ(cwdbuf, getcwd(cwdbuf, PATH_MAX));
 
-  // Assert that GetCwd() and getcwd() return the same value.
+  // Assert that Path::Cwd() and getcwd() return the same value.
   string cwd(cwdbuf);
-  ASSERT_EQ(cwd, blaze_util::GetCwd());
+  ASSERT_EQ(cwd, blaze_util::Path::Cwd().OsPath());
 
   // Change to a different directory.
   ASSERT_EQ(0, chdir("/usr"));
 
-  // Assert that GetCwd() returns the new CWD.
-  ASSERT_EQ(string("/usr"), blaze_util::GetCwd());
+  // Assert that Path::Cwd() returns the new CWD.
+  ASSERT_EQ(string("/usr"), blaze_util::Path::Cwd().OsPath());
 
   ASSERT_EQ(0, chdir(cwd.c_str()));
-  ASSERT_EQ(cwd, blaze_util::GetCwd());
+  ASSERT_EQ(cwd, blaze_util::Path::Cwd().OsPath());
 }
 
 TEST(PathPosixTest, IsAbsolute) {
@@ -152,7 +152,7 @@ TEST(PathPosixTest, IsDevNullTest) {
 TEST(PathPosixTest, MakeAbsolute) {
   EXPECT_EQ(MakeAbsolute("/foo/bar"), "/foo/bar");
   EXPECT_EQ(MakeAbsolute("/foo/bar/"), "/foo/bar/");
-  EXPECT_EQ(MakeAbsolute("foo"), blaze_util::GetCwd() + "/foo");
+  EXPECT_EQ(MakeAbsolute("foo"), blaze_util::Path::Cwd().OsPath() + "/foo");
 
   EXPECT_EQ(MakeAbsolute("/dev/null"), "/dev/null");
 
@@ -172,16 +172,16 @@ TEST(PathPosixTest, MakeAbsoluteAndResolveEnvvars) {
   EXPECT_EQ("/bar", MakeAbsoluteAndResolveEnvvars("${test_tmpdir}/bar"));
 
   // This style of variable is not supported
-  EXPECT_EQ(JoinPath(GetCwd(), "$TEST_TMPDIR/bar"),
+  EXPECT_EQ(JoinPath(Path::Cwd().OsPath(), "$TEST_TMPDIR/bar"),
             MakeAbsoluteAndResolveEnvvars("$TEST_TMPDIR/bar"));
 
   // Only one layer of variables is expanded, we do not recurse
-  EXPECT_EQ(JoinPath(GetCwd(), "${TEST_TMPDIR}/bar"),
+  EXPECT_EQ(JoinPath(Path::Cwd().OsPath(), "${TEST_TMPDIR}/bar"),
             MakeAbsoluteAndResolveEnvvars("${PATH_POSIX_TEST_ENV}/bar"));
 
   // Check that Windows-style envvars are not resolved when not on Windows.
   EXPECT_EQ(MakeAbsoluteAndResolveEnvvars("%PATH%"),
-            JoinPath(GetCwd(), "%PATH%"));
+            JoinPath(Path::Cwd().OsPath(), "%PATH%"));
 }
 
 }  // namespace blaze_util

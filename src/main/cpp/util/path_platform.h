@@ -18,6 +18,41 @@
 
 namespace blaze_util {
 
+// A relative or absolute filesystem path.
+class Path {
+ public:
+  Path() = default;
+
+  // Returns the current working directory.
+  // The path is platform-specific (e.g. Windows path of Windows) and absolute.
+  static Path Cwd();
+
+  // Assigns 'path' to this object. May convert the path to OS native format.
+  // Returns true upon success; returns false and leaves the object unchanged
+  // otherwise.
+  bool Set(const std::string& path);
+
+  // Returns the path in ASCII format. Directory separators are forward slashes.
+  std::string AsAscii() const;
+
+  // Returns the underlying OS path.
+  // Call this only in OS-specific source files, to pass to filesystem API
+  // functions (e.g. open / CreateFileW).
+#if defined(_WIN32) || defined(__CYGWIN__)
+  const std::wstring& OsPath() const { return path_; }
+#else
+  const std::string& OsPath() const { return path_; }
+#endif
+
+ private:
+  // The underlying OS path. It's always in the host OS's path format.
+#if defined(_WIN32) || defined(__CYGWIN__)
+  std::wstring path_;
+#else
+  std::string path_;
+#endif
+};
+
 // Convert a path from Bazel internal form to underlying OS form.
 // On Unixes this is an identity operation.
 // On Windows, Bazel internal form is cygwin path, and underlying OS form
