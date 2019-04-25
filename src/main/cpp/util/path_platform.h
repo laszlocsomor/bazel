@@ -29,7 +29,8 @@ class Path {
   Path(const char* p);
   Path(std::string p);
 
-  Path Join(const Path& o) const;
+  bool operator==(const Path& o) const;
+  bool operator!=(const Path& o) const { return !(*this == o); }
 
   std::string ToPrintablePath() const;
 
@@ -43,13 +44,17 @@ class Path {
 
   std::string ToFlagValue() const;
 
+  std::string Basename() const;
   Path Canonicalize() const;
   bool CanAccessDirectory() const;
   bool CanExecuteFile() const;
   bool CanReadFile() const;
+  Path Dirname() const;
   bool Empty() const { return p_.empty(); }
   bool Exists() const;
   bool IsDirectory() const;
+  bool IsRootDirectory() const;
+  Path Join(const Path& o) const;
 
  private:
   std::string p_;

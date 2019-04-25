@@ -412,8 +412,8 @@ static vector<string> GetArgumentArray(
   string product = globals->options->product_name;
   blaze_util::ToLower(&product);
   result.push_back(product + "(" + workspace + ")");
-  globals->options->AddJVMArgumentPrefix(
-      blaze_util::Dirname(blaze_util::Dirname(globals->jvm_path)), &result);
+  globals->options->AddJVMArgumentPrefix(globals->jvm_path.Dirname().Dirname(),
+                                         &result);
 
   result.push_back("-XX:+HeapDumpOnOutOfMemoryError");
   blaze_util::Path heap_crash_path = globals->options->output_base;
@@ -524,7 +524,7 @@ static vector<string> GetArgumentArray(
   result.push_back("--output_base=" +
                    globals->options->output_base.ToFlagValue());
   result.push_back("--workspace_directory=" +
-                   blaze_util::ConvertPath(globals->workspace));
+                   globals->workspace.ToFlagValue());
   result.push_back("--default_system_javabase=" + GetSystemJavabase());
 
   if (!globals->options->server_jvm_out.Empty()) {
@@ -659,7 +659,8 @@ static void AddLoggingArgs(vector<string> *args) {
     args->push_back(string("--restart_reason=") +
                     reasons[globals->restart_reason]);
   }
-  args->push_back(string("--binary_path=") + globals->binary_path);
+  args->push_back(string("--binary_path=") +
+                  globals->binary_path.ToFlagValue());
 }
 
 // Join the elements of the specified array with NUL's (\0's), akin to the
@@ -673,9 +674,9 @@ static string GetArgumentString(const vector<string> &argument_array) {
 // Do a chdir into the workspace, and die if it fails.
 static void GoToWorkspace(const WorkspaceLayout *workspace_layout) {
   if (workspace_layout->InWorkspace(globals->workspace) &&
-      !blaze_util::ChangeDirectory(globals->workspace)) {
+      !blaze_util::ChangeDirectory(globals->workspace.ToBazelPath())) {
     BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
-        << "changing directory into " << globals->workspace
+        << "changing directory into " << globals->workspace.ToPrintablePath()
         << " failed: " << GetLastErrorString();
   }
 }
@@ -701,13 +702,14 @@ static int StartServer(const WorkspaceLayout *workspace_layout,
     globals->restart_reason = NO_DAEMON;
   }
 
-  string exe =
+  blaze_util::Path exe =
       globals->options->GetExe(globals->jvm_path, globals->ServerJarPath());
   // Go to the workspace before we daemonize, so
   // we can still print errors to the terminal.
   GoToWorkspace(workspace_layout);
 
-  return ExecuteDaemon(exe, jvm_args_vector, PrepareEnvironmentForJvm(),
+  return ExecuteDaemon(exe.ToBazelPath(), jvm_args_vector,
+                       PrepareEnvironmentForJvm(),
                        globals->jvm_log_file.ToBazelPath(),
                        globals->jvm_log_file_append, binaries_dir.ToBazelPath(),
                        server_dir.ToBazelPath(), globals->options,
@@ -756,14 +758,15 @@ static void StartStandalone(const WorkspaceLayout *workspace_layout,
                          command_arguments.end());
 
   GoToWorkspace(workspace_layout);
-  string exe =
+  blaze_util::Path exe =
       globals->options->GetExe(globals->jvm_path, globals->ServerJarPath());
 
   {
     WithEnvVars env_obj(PrepareEnvironmentForJvm());
-    ExecuteProgram(exe, jvm_args_vector);
+    ExecuteProgram(exe.ToBazelPath(), jvm_args_vector);
+    string err = GetLastErrorString();
     BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
-        << "execv of '" << exe << "' failed: " << GetLastErrorString();
+        << "execv of '" << exe.ToPrintablePath() << "' failed: " << err;
   }
 }
 
@@ -1288,7 +1291,7 @@ static ATTRIBUTE_NORETURN void SendServerRequest(
     // Check for the case when the workspace directory deleted and then gets
     // recreated while the server is running
 
-    string server_cwd = GetProcessCWD(globals->server_pid);
+    blaze_util::Path server_cwd = GetProcessCWD(globals->server_pid);
     // If server_cwd is empty, GetProcessCWD failed. This notably occurs when
     // running under Docker because then readlink(/proc/[pid]/cwd) returns
     // EPERM.
@@ -1300,14 +1303,14 @@ static ATTRIBUTE_NORETURN void SendServerRequest(
     // cases, it's better to assume that everything is alright if we can't get
     // the cwd.
 
-    if (!server_cwd.empty() &&
+    if (!server_cwd.Empty() &&
         (server_cwd != globals->workspace ||                // changed
-         server_cwd.find(" (deleted)") != string::npos)) {  // deleted.
+         server_cwd.ToBazelPath().find(" (deleted)") != string::npos)) {  // deleted.
       // There's a distant possibility that the two paths look the same yet are
       // actually different because the two processes have different mount
       // tables.
-      BAZEL_LOG(INFO) << "Server's cwd moved or deleted (" << server_cwd
-                      << ").";
+      BAZEL_LOG(INFO) << "Server's cwd moved or deleted ("
+                      << server_cwd.ToPrintablePath() << ").";
       server->KillRunningServer();
     } else {
       break;
@@ -1330,7 +1333,8 @@ static void ParseOptions(int argc, const char *argv[]) {
   args.insert(args.end(), argv, argv + argc);
   const blaze_exit_code::ExitCode parse_exit_code =
       globals->option_processor->ParseOptions(
-          args, globals->workspace, globals->cwd, &error);
+          args, globals->workspace.ToBazelPath(), globals->cwd.ToBazelPath(),
+          &error);
 
   if (parse_exit_code != blaze_exit_code::SUCCESS) {
     globals->option_processor->PrintStartupOptionsProvenanceMessage();
@@ -1342,12 +1346,13 @@ static void ParseOptions(int argc, const char *argv[]) {
 // Compute the globals globals->cwd and globals->workspace.
 static void ComputeWorkspace(const WorkspaceLayout *workspace_layout) {
   globals->cwd = blaze_util::MakeCanonical(blaze_util::GetCwd().c_str());
-  if (globals->cwd.empty()) {
+  if (globals->cwd.Empty()) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
         << "blaze_util::MakeCanonical('" << blaze_util::GetCwd()
         << "') failed: " << GetLastErrorString();
   }
-  globals->workspace = workspace_layout->GetWorkspace(globals->cwd);
+  globals->workspace =
+      workspace_layout->GetWorkspace(globals->cwd.ToBazelPath());
 }
 
 // Figure out the base directories based on embedded data, username, cwd, etc.
@@ -1379,7 +1384,7 @@ static void ComputeBaseDirectories(const WorkspaceLayout *workspace_layout,
 
   if (globals->options->output_base.Empty()) {
     globals->options->output_base = blaze::GetHashedBaseDir(
-        globals->options->output_user_root, globals->workspace);
+        globals->options->output_user_root, globals->workspace.ToBazelPath());
   }
 
   if (!globals->options->output_base.Exists()) {
@@ -1415,7 +1420,7 @@ static void ComputeBaseDirectories(const WorkspaceLayout *workspace_layout,
         << GetLastErrorString();
   }
 
-  globals->lockfile = globals->options->output_base.Join("lock").ToBazelPath();
+  globals->lockfile = globals->options->output_base.Join("lock");
   if (!globals->options->server_jvm_out.Empty()) {
     globals->jvm_log_file = globals->options->server_jvm_out;
     globals->jvm_log_file_append = true;
@@ -1486,13 +1491,13 @@ static map<string, EnvVarValue> PrepareEnvironmentForJvm() {
   return result;
 }
 
-static string CheckAndGetBinaryPath(const string &argv0) {
+static blaze_util::Path CheckAndGetBinaryPath(const string &argv0) {
   if (blaze_util::IsAbsolute(argv0)) {
     return argv0;
   } else {
-    string abs_path = blaze_util::JoinPath(globals->cwd, argv0);
-    string resolved_path = blaze_util::MakeCanonical(abs_path.c_str());
-    if (!resolved_path.empty()) {
+    blaze_util::Path abs_path = globals->cwd.Join(argv0);
+    blaze_util::Path resolved_path = abs_path.Canonicalize();
+    if (!resolved_path.Empty()) {
       return resolved_path;
     } else {
       // This happens during our integration tests, but thats okay, as we won't

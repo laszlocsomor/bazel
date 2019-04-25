@@ -550,7 +550,8 @@ blaze_util::Path StartupOptions::GetJvm() {
   exit(1);
 }
 
-string StartupOptions::GetExe(const string &jvm, const string &jar_path) {
+blaze_util::Path StartupOptions::GetExe(const blaze_util::Path& jvm,
+                                        const blaze_util::Path&) {
   return jvm;
 }
 

@@ -28,14 +28,15 @@ namespace blaze {
 class WorkspaceLayoutTest : public ::testing::Test {
  protected:
   WorkspaceLayoutTest()
-      : build_root_(blaze_util::JoinPath(blaze::GetPathEnv("TEST_TMPDIR"),
-                                         "build_root")),
+      : build_root_(
+            blaze_util::Path(blaze::GetPathEnv("TEST_TMPDIR"))
+                .Join("build_root")),
         workspace_layout_(new WorkspaceLayout()) {}
 
   void SetUp() override {
-    ASSERT_TRUE(blaze_util::MakeDirectories(build_root_, 0755));
+    ASSERT_TRUE(blaze_util::MakeDirectories(build_root_.ToBazelPath(), 0755));
     ASSERT_TRUE(blaze_util::WriteFile(
-        "", blaze_util::JoinPath(build_root_, "WORKSPACE"), 0755));
+        "", build_root_.Join("WORKSPACE").ToBazelPath(), 0755));
   }
 
   void TearDown() override {
@@ -44,27 +45,28 @@ class WorkspaceLayoutTest : public ::testing::Test {
     // empty directories from test to test. Remove this once
     // blaze_util::DeleteDirectories(path) exists.
     std::vector<std::string> files_in_workspace;
-    blaze_util::GetAllFilesUnder(build_root_, &files_in_workspace);
+    blaze_util::GetAllFilesUnder(build_root_.ToBazelPath(),
+                                 &files_in_workspace);
     for (const std::string& file : files_in_workspace) {
       blaze_util::UnlinkPath(file);
     }
   }
 
-  const std::string build_root_;
+  const blaze_util::Path build_root_;
   const std::unique_ptr<WorkspaceLayout> workspace_layout_;
 };
 
 TEST_F(WorkspaceLayoutTest, GetWorkspace) {
   // "" is returned when there's no workspace path.
-  std::string cwd = "foo/bar";
-  ASSERT_EQ("", workspace_layout_->GetWorkspace(cwd));
+  blaze_util::Path cwd = "foo/bar";
+  ASSERT_EQ("", workspace_layout_->GetWorkspace(cwd).ToBazelPath());
   ASSERT_FALSE(workspace_layout_->InWorkspace(cwd));
 
   cwd = build_root_;
   ASSERT_EQ(build_root_, workspace_layout_->GetWorkspace(cwd));
   ASSERT_TRUE(workspace_layout_->InWorkspace(build_root_));
 
-  cwd = blaze_util::JoinPath(build_root_, cwd);
+  cwd = build_root_.Join(cwd);
   ASSERT_EQ(build_root_, workspace_layout_->GetWorkspace(cwd));
 }
 

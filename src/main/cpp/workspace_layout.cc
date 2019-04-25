@@ -32,29 +32,28 @@ blaze_util::Path WorkspaceLayout::GetOutputRoot() const {
   return blaze::GetOutputRoot();
 }
 
-bool WorkspaceLayout::InWorkspace(const string &workspace) const {
-  return blaze_util::PathExists(
-      blaze_util::JoinPath(workspace, kWorkspaceMarker));
+bool WorkspaceLayout::InWorkspace(const blaze_util::Path& workspace) const {
+  return workspace.Join(kWorkspaceMarker).Exists();
 }
 
-string WorkspaceLayout::GetWorkspace(const string &cwd) const {
-  assert(!cwd.empty());
-  string workspace = cwd;
+blaze_util::Path WorkspaceLayout::GetWorkspace(const blaze_util::Path& cwd) const {
+  assert(!cwd.Empty());
+  blaze_util::Path workspace = cwd;
 
   do {
     if (InWorkspace(workspace)) {
       return workspace;
     }
-    workspace = blaze_util::Dirname(workspace);
-  } while (!workspace.empty() && !blaze_util::IsRootDirectory(workspace));
-  return "";
+    workspace = workspace.Dirname();
+  } while (!workspace.Empty() && !workspace.IsRootDirectory());
+  return blaze_util::Path();
 }
 
 string WorkspaceLayout::GetPrettyWorkspaceName(
-    const std::string& workspace) const {
+    const blaze_util::Path& workspace) const {
   // e.g. A Bazel server process running in ~/src/myproject (where there's a
   // ~/src/myproject/WORKSPACE file) will appear in ps(1) as "bazel(myproject)".
-  return blaze_util::Basename(workspace);
+  return workspace.Basename();
 }
 
 std::string WorkspaceLayout::GetWorkspaceRcPath(

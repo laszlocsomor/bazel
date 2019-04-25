@@ -45,14 +45,14 @@ enum RestartReason {
 struct GlobalVariables {
   GlobalVariables(OptionProcessor *option_processor);
 
-  std::string ServerJarPath() const {
+  blaze_util::Path ServerJarPath() const {
     // The server jar is called "A-server.jar" so it's the first binary we
     // extracted.
     return extracted_binaries.empty() ? "" : extracted_binaries[0];
   }
 
   // Used to make concurrent invocations of this program safe.
-  std::string lockfile;  // = <output_base>/lock
+  blaze_util::Path lockfile;  // = <output_base>/lock
 
   // Whrere to write the server's JVM's output. Default value is
   // <output_base>/server/jvm.out.
@@ -61,18 +61,18 @@ struct GlobalVariables {
   // Whether or not the jvm_log_file should be opened with O_APPEND.
   bool jvm_log_file_append;
 
-  std::string cwd;
+  blaze_util::Path cwd;
 
   // The nearest enclosing workspace directory, starting from cwd.
   // If not under a workspace directory, this is equal to cwd.
-  std::string workspace;
+  blaze_util::Path workspace;
 
   // Option processor responsible for parsing RC files and converting them into
   // the argument list passed on to the server.
   OptionProcessor *option_processor;
 
   // The path of the JVM executable that should be used to launch Blaze.
-  std::string jvm_path;
+  blaze_util::Path jvm_path;
 
   // TODO(laszlocsomor) 2016-11-28: move pid_t usage out of here and wherever
   // else it appears. Find some way to not have to declare a pid_t here, either
@@ -102,7 +102,7 @@ struct GlobalVariables {
   RestartReason restart_reason;
 
   // The absolute path of the blaze binary.
-  std::string binary_path;
+  blaze_util::Path binary_path;
 
   // MD5 hash of the Blaze binary (includes deploy.jar, extracted binaries, and
   // anything else that ends up under the install_base).

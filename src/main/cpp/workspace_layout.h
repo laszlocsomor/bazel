@@ -40,15 +40,15 @@ class WorkspaceLayout {
   //
   // The returned path is relative or absolute depending on whether cwd was
   // relative or absolute.
-  virtual std::string GetWorkspace(const std::string& cwd) const;
+  virtual blaze_util::Path GetWorkspace(const blaze_util::Path& cwd) const;
 
   // Given a result returned from GetWorkspace, returns a pretty workspace name
   // than can e.g. be used in the process title of the Bazel server.
   virtual std::string GetPrettyWorkspaceName(
-      const std::string& workspace) const;
+      const blaze_util::Path& workspace) const;
 
   // Returns if workspace is a valid build workspace.
-  virtual bool InWorkspace(const std::string& workspace) const;
+  virtual bool InWorkspace(const blaze_util::Path& workspace) const;
 
   // Returns the path of the workspace rc file.
   virtual std::string GetWorkspaceRcPath(

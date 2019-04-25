@@ -27,6 +27,7 @@
 #include "src/main/cpp/util/exit_code.h"
 #include "src/main/cpp/util/file_platform.h"
 #include "src/main/cpp/util/logging.h"
+#include "src/main/cpp/util/path.h"
 #include "src/main/cpp/util/strings.h"
 #include "src/main/native/windows/file.h"
 
@@ -609,13 +610,19 @@ Path::Path(const char* p) { SetPath(p, &p_); }
 
 Path::Path(std::string p) { SetPath(std::move(p), &p_); }
 
-Path Path::Join(const Path& o) const { return JoinPath(p_, o.p_); }
+bool Path::operator==(const Path& o) const {
+  return AsLower(p_) == AsLower(o.p_);
+}
+
+Path Path::Join(const Path& o) const { return blaze_util::JoinPath(p_, o.p_); }
 
 std::string Path::ToPrintablePath() const { return p_; }
 
 std::string Path::ToBazelPath() const { return p_; }
 
 std::string Path::ToFlagValue() const { return PathAsJvmFlag(p_); }
+
+std::string Path::Basename() const { return blaze_util::Basename(p_); }
 
 Path Path::Canonicalize() const { return MakeCanonical(p_.c_str()); }
 
@@ -625,8 +632,12 @@ bool Path::CanExecuteFile() const { return blaze_util::CanExecuteFile(p_); }
 
 bool Path::CanReadFile() const { return blaze_util::CanReadFile(p_); }
 
+Path Path::Dirname() const { return blaze_util::Dirname(p_); }
+
 bool Path::Exists() const { return PathExists(p_); }
 
 bool Path::IsDirectory() const { return blaze_util::IsDirectory(p_); }
+
+bool Path::IsRootDirectory() const { return blaze_util::IsRootDirectory(p_); }
 
 }  // namespace blaze_util

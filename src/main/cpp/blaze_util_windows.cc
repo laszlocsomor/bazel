@@ -375,8 +375,7 @@ static void PrintErrorW(const wstring& op) {
   LocalFree(message_buffer);
 }
 
-void WarnFilesystemType(const string& output_base) {
-}
+void WarnFilesystemType(const string& output_base) { }
 
 string GetProcessIdAsString() {
   return ToString(GetCurrentProcessId());
@@ -928,9 +927,10 @@ bool KillServerProcess(int pid, const blaze_util::Path& output_base) {
   BOOL result = TerminateProcess(process, /*uExitCode*/ 0);
   if (!result || !AwaitServerProcessTermination(pid, output_base,
                                                 kPostKillGracePeriodSeconds)) {
+    string err = GetLastErrorString();
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
         << "Cannot terminate server process with PID " << pid
-        << ", output_base=(" << output_base << "): " << GetLastErrorString();
+        << ", output_base=(" << output_base.ToPrintablePath() << "): " << err;
   }
   return result;
 }
