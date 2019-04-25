@@ -181,7 +181,7 @@ struct BlazeLock {
 // Acquires a lock on the output base. Exits if the lock cannot be acquired.
 // Sets ``lock`` to a value that can subsequently be passed to ReleaseLock().
 // Returns the number of milliseconds spent with waiting for the lock.
-uint64_t AcquireLock(const std::string& output_base, bool batch_mode,
+uint64_t AcquireLock(const blaze_util::Path& output_base, bool batch_mode,
                      bool block, BlazeLock* blaze_lock);
 
 // Releases the lock on the output base. In case of an error, continues as
@@ -189,12 +189,12 @@ uint64_t AcquireLock(const std::string& output_base, bool batch_mode,
 void ReleaseLock(BlazeLock* blaze_lock);
 
 // Verifies whether the server process still exists. Returns true if it does.
-bool VerifyServerProcess(int pid, const std::string& output_base);
+bool VerifyServerProcess(int pid, const blaze_util::Path& output_base);
 
 // Kills a server process based on its PID.
 // Returns true if the server process was found and killed.
 // WARNING! This function can be called from a signal handler!
-bool KillServerProcess(int pid, const std::string& output_base);
+bool KillServerProcess(int pid, const blaze_util::Path& output_base);
 
 // Wait for approximately the specified number of milliseconds. The actual
 // amount of time waited may be more or less because of interrupts or system
@@ -202,7 +202,7 @@ bool KillServerProcess(int pid, const std::string& output_base);
 void TrySleep(unsigned int milliseconds);
 
 // Mark path as being excluded from backups (if supported by operating system).
-void ExcludePathFromBackup(const std::string& path);
+void ExcludePathFromBackup(const blaze_util::Path& path);
 
 // Returns the canonical form of the base dir given a root and a hashable
 // string. The resulting dir is composed of the root + md5(hashable)

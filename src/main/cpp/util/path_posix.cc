@@ -98,8 +98,20 @@ Path::Path(const char* p) : p_(p) {}
 
 Path::Path(std::string p) : p_(std::move(p)) {}
 
+Path Path::Join(const Path& o) const { return JoinPath(p_, o.p_); }
+
 std::string Path::ToPrintablePath() const { return p_; }
 
 std::string Path::ToBazelPath() const { return p_; }
+
+std::string Path::ToFlagValue() const { return PathAsJvmFlag(p_); }
+
+Path Path::Canonicalize() const { return MakeCanonical(p_.c_str()); }
+
+bool Path::CanAccessDirectory() const { return PathExists(p_); }
+
+bool Path::Exists() const { return PathExists(p_); }
+
+bool Path::IsDirectory() const { return blaze_util::IsDirectory(p_); }
 
 }  // namespace blaze_util

@@ -29,6 +29,8 @@ class Path {
   Path(const char* p);
   Path(std::string p);
 
+  Path Join(const Path& o) const;
+
   std::string ToPrintablePath() const;
 
   // Returns a path in Bazel's own representation.
@@ -38,6 +40,14 @@ class Path {
   // (e.g. "foo/bar" or "../foo"), potentially starting with a drive letter
   // (e.g. "C:/foo/bar"), or it is "NUL".
   std::string ToBazelPath() const;
+
+  std::string ToFlagValue() const;
+
+  Path Canonicalize() const;
+  bool CanAccessDirectory() const;
+  bool Empty() const { return p_.empty(); }
+  bool Exists() const;
+  bool IsDirectory() const;
 
  private:
   std::string p_;

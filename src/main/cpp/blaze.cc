@@ -416,9 +416,8 @@ static vector<string> GetArgumentArray(
       blaze_util::Dirname(blaze_util::Dirname(globals->jvm_path)), &result);
 
   result.push_back("-XX:+HeapDumpOnOutOfMemoryError");
-  string heap_crash_path = globals->options->output_base;
-  result.push_back("-XX:HeapDumpPath=" +
-                   blaze_util::PathAsJvmFlag(heap_crash_path));
+  blaze_util::Path heap_crash_path = globals->options->output_base;
+  result.push_back("-XX:HeapDumpPath=" + heap_crash_path.ToFlagValue());
 
   // TODO(b/109998449): only assume JDK >= 9 for embedded JDKs
   if (!globals->options->GetEmbeddedJavabase().empty()) {
@@ -523,7 +522,7 @@ static vector<string> GetArgumentArray(
                    blaze_util::ConvertPath(globals->options->install_base));
   result.push_back("--install_md5=" + globals->install_md5);
   result.push_back("--output_base=" +
-                   blaze_util::ConvertPath(globals->options->output_base));
+                   globals->options->output_base.ToFlagValue());
   result.push_back("--workspace_directory=" +
                    blaze_util::ConvertPath(globals->workspace));
   result.push_back("--default_system_javabase=" + GetSystemJavabase());
@@ -687,15 +686,14 @@ static int StartServer(const WorkspaceLayout *workspace_layout,
   string argument_string = GetArgumentString(jvm_args_vector);
   const string binaries_dir =
       GetEmbeddedBinariesRoot(globals->options->install_base);
-  string server_dir =
-      blaze_util::JoinPath(globals->options->output_base, "server");
+  blaze_util::Path server_dir = globals->options->output_base.Join("server");
   // Write the cmdline argument string to the server dir. If we get to this
   // point, there is no server running, so we don't overwrite the cmdline file
   // for the existing server. If might be that the server dies and the cmdline
   // file stays there, but that is not a problem, since we always check the
   // server, too.
   blaze_util::WriteFile(argument_string,
-                        blaze_util::JoinPath(server_dir, "cmdline"));
+                        server_dir.Join("cmdline").ToBazelPath());
 
   // unless we restarted for a new-version, mark this as initial start
   if (globals->restart_reason == NO_RESTART) {
@@ -710,7 +708,7 @@ static int StartServer(const WorkspaceLayout *workspace_layout,
 
   return ExecuteDaemon(exe, jvm_args_vector, PrepareEnvironmentForJvm(),
                        globals->jvm_log_file, globals->jvm_log_file_append,
-                       binaries_dir, server_dir, globals->options,
+                       binaries_dir, server_dir.ToBazelPath(), globals->options,
                        server_startup);
 }
 
@@ -788,13 +786,13 @@ static void WriteFileToStderrOrDie(const char *file_name) {
 
 // After connecting to the Blaze server, return its PID, or -1 if there was an
 // error.
-static int GetServerPid(const string &server_dir) {
+static int GetServerPid(const blaze_util::Path& server_dir) {
   // Note: there is no race here on startup since the server creates
   // the pid file strictly before it binds the socket.
-  string pid_file = blaze_util::JoinPath(server_dir, kServerPidFile);
+  blaze_util::Path pid_file = server_dir.Join(kServerPidFile);
   string bufstr;
   int result;
-  if (!blaze_util::ReadFile(pid_file, &bufstr, 32) ||
+  if (!blaze_util::ReadFile(pid_file.ToBazelPath(), &bufstr, 32) ||
       !blaze_util::safe_strto32(bufstr, &result)) {
     return -1;
   }
@@ -811,21 +809,19 @@ static void SetRestartReasonIfNotSet(RestartReason restart_reason) {
 // Starts up a new server and connects to it. Exits if it didn't work out.
 static void StartServerAndConnect(const WorkspaceLayout *workspace_layout,
                                   BlazeServer *server) {
-  string server_dir =
-      blaze_util::JoinPath(globals->options->output_base, "server");
+  blaze_util::Path server_dir = globals->options->output_base.Join("server");
 
   // Delete the old command_port file if it already exists. Otherwise we might
   // run into the race condition that we read the old command_port file before
   // the new server has written the new file and we try to connect to the old
   // port, run into a timeout and try again.
-  (void)blaze_util::UnlinkPath(
-      blaze_util::JoinPath(server_dir, "command_port"));
+  (void)blaze_util::UnlinkPath(server_dir.Join("command_port").ToBazelPath());
 
   // The server dir has the socket, so we don't allow access by other
   // users.
-  if (!blaze_util::MakeDirectories(server_dir, 0700)) {
+  if (!blaze_util::MakeDirectories(server_dir.ToBazelPath(), 0700)) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "server directory '" << server_dir
+        << "server directory '" << server_dir.ToPrintablePath()
         << "' could not be created: " << GetLastErrorString();
   }
 
@@ -1197,15 +1193,15 @@ static void KillRunningServerIfDifferentStartupOptions(
     return;
   }
 
-  string cmdline_path =
-      blaze_util::JoinPath(globals->options->output_base, "server/cmdline");
+  blaze_util::Path cmdline_path =
+      globals->options->output_base.Join("server/cmdline");
   string old_joined_arguments;
 
   // No, /proc/$PID/cmdline does not work, because it is limited to 4K. Even
   // worse, its behavior differs slightly between kernels (in some, when longer
   // command lines are truncated, the last 4 bytes are replaced with
   // "..." + NUL.
-  blaze_util::ReadFile(cmdline_path, &old_joined_arguments);
+  blaze_util::ReadFile(cmdline_path.ToBazelPath(), &old_joined_arguments);
   vector<string> old_arguments = blaze_util::Split(old_joined_arguments, '\0');
 
   // These strings contain null-separated command line arguments. If they are
@@ -1231,11 +1227,12 @@ static void EnsureCorrectRunningVersion(BlazeServer *server) {
   // target dirs don't match, or if the symlink was not present, then kill any
   // running servers. Lastly, symlink to our installation so others know which
   // installation is running.
-  string installation_path =
-      blaze_util::JoinPath(globals->options->output_base, "install");
+  blaze_util::Path installation_path =
+      globals->options->output_base.Join("install");
   string prev_installation;
   bool ok =
-      blaze_util::ReadDirectorySymlink(installation_path, &prev_installation);
+      blaze_util::ReadDirectorySymlink(installation_path.ToBazelPath(),
+                                       &prev_installation);
   if (!ok || !blaze_util::CompareAbsolutePaths(
                  prev_installation, globals->options->install_base)) {
     if (server->Connected()) {
@@ -1246,12 +1243,13 @@ static void EnsureCorrectRunningVersion(BlazeServer *server) {
       globals->restart_reason = NEW_VERSION;
     }
 
-    blaze_util::UnlinkPath(installation_path);
+    blaze_util::UnlinkPath(installation_path.ToBazelPath());
     if (!SymlinkDirectories(globals->options->install_base,
-                            installation_path)) {
+                            installation_path.ToBazelPath())) {
+      string err = GetLastErrorString();
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "failed to create installation symlink '" << installation_path
-          << "': " << GetLastErrorString();
+          << "failed to create installation symlink '"
+          << installation_path.ToPrintablePath() << "': " << err;
     }
 
     // Update the mtime of the install base so that cleanup tools can
@@ -1370,47 +1368,51 @@ static void ComputeBaseDirectories(const WorkspaceLayout *workspace_layout,
     ComputeInstallMd5AndNoteAllFiles(self_path);
   }
 
-  if (globals->options->output_base.empty()) {
+  if (globals->options->output_base.Empty()) {
     globals->options->output_base = blaze::GetHashedBaseDir(
         globals->options->output_user_root, globals->workspace);
   }
 
-  const char *output_base = globals->options->output_base.c_str();
-  if (!blaze_util::PathExists(globals->options->output_base)) {
-    if (!blaze_util::MakeDirectories(globals->options->output_base, 0777)) {
+  if (!globals->options->output_base.Exists()) {
+    if (!blaze_util::MakeDirectories(
+             globals->options->output_base.ToBazelPath(), 0777)) {
+      string err = GetLastErrorString();
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "Output base directory '" << output_base
-          << "' could not be created: " << GetLastErrorString();
+          << "Output base directory '"
+          << globals->options->output_base.ToPrintablePath()
+          << "' could not be created: " << err;
     }
   } else {
-    if (!blaze_util::IsDirectory(globals->options->output_base)) {
+    if (!globals->options->output_base.IsDirectory()) {
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "Output base directory '" << output_base
+          << "Output base directory '"
+          << globals->options->output_base.ToPrintablePath()
           << "' could not be created. It exists but is not a directory.";
     }
   }
-  if (!blaze_util::CanAccessDirectory(globals->options->output_base)) {
+  if (!globals->options->output_base.CanAccessDirectory()) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "Output base directory '" << output_base
+        << "Output base directory '"
+        << globals->options->output_base.ToPrintablePath()
         << "' must be readable and writable.";
   }
-  ExcludePathFromBackup(output_base);
+  ExcludePathFromBackup(globals->options->output_base.ToBazelPath());
 
-  globals->options->output_base = blaze_util::MakeCanonical(output_base);
-  if (globals->options->output_base.empty()) {
+  globals->options->output_base = globals->options->output_base.Canonicalize();
+  if (globals->options->output_base.Empty()) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "blaze_util::MakeCanonical('" << output_base
-        << "') failed: " << GetLastErrorString();
+        << "blaze_util::MakeCanonical('"
+        << globals->options->output_base.ToPrintablePath() << "') failed: "
+        << GetLastErrorString();
   }
 
-  globals->lockfile =
-      blaze_util::JoinPath(globals->options->output_base, "lock");
+  globals->lockfile = globals->options->output_base.Join("lock").ToBazelPath();
   if (!globals->options->server_jvm_out.empty()) {
     globals->jvm_log_file = globals->options->server_jvm_out;
     globals->jvm_log_file_append = true;
   } else {
     globals->jvm_log_file =
-      blaze_util::JoinPath(globals->options->output_base, "server/jvm.out");
+        globals->options->output_base.Join("server/jvm.out").ToBazelPath();
     globals->jvm_log_file_append = false;
   }
 }
@@ -1493,15 +1495,15 @@ static string CheckAndGetBinaryPath(const string &argv0) {
 
 int GetExitCodeForAbruptExit(const GlobalVariables &globals) {
   BAZEL_LOG(INFO) << "Looking for a custom exit-code.";
-  std::string filename = blaze_util::JoinPath(
-      globals.options->output_base, "exit_code_to_use_on_abrupt_exit");
+  blaze_util::Path filename =
+      globals.options->output_base.Join("exit_code_to_use_on_abrupt_exit");
   std::string content;
-  if (!blaze_util::ReadFile(filename, &content)) {
+  if (!blaze_util::ReadFile(filename.ToBazelPath(), &content)) {
     BAZEL_LOG(INFO) << "Unable to read the custom exit-code file. "
                     << "Exiting with an INTERNAL_ERROR.";
     return blaze_exit_code::INTERNAL_ERROR;
   }
-  if (!blaze_util::UnlinkPath(filename)) {
+  if (!blaze_util::UnlinkPath(filename.ToBazelPath())) {
     BAZEL_LOG(INFO) << "Unable to delete the custom exit-code file. "
                     << "Exiting with an INTERNAL_ERROR.";
     return blaze_exit_code::INTERNAL_ERROR;
@@ -1578,7 +1580,7 @@ int Main(int argc, const char *argv[], WorkspaceLayout *workspace_layout,
   BAZEL_LOG(INFO) << "Acquired the client lock, waited "
                   << globals->command_wait_time << " milliseconds";
 
-  WarnFilesystemType(globals->options->output_base);
+  WarnFilesystemType(globals->options->output_base.ToBazelPath());
 
   ExtractData(self_path);
   globals->jvm_path = globals->options->GetJvm();
@@ -1663,14 +1665,13 @@ bool GrpcBlazeServer::TryConnect(
 bool GrpcBlazeServer::Connect() {
   assert(!connected_);
 
-  std::string server_dir =
-      blaze_util::JoinPath(globals->options->output_base, "server");
+  blaze_util::Path server_dir = globals->options->output_base.Join("server");
   std::string port;
   std::string ipv4_prefix = "127.0.0.1:";
   std::string ipv6_prefix_1 = "[0:0:0:0:0:0:0:1]:";
   std::string ipv6_prefix_2 = "[::1]:";
 
-  if (!blaze_util::ReadFile(blaze_util::JoinPath(server_dir, "command_port"),
+  if (!blaze_util::ReadFile(server_dir.Join("command_port").ToBazelPath(),
                             &port)) {
     return false;
   }
@@ -1682,12 +1683,12 @@ bool GrpcBlazeServer::Connect() {
     return false;
   }
 
-  if (!blaze_util::ReadFile(blaze_util::JoinPath(server_dir, "request_cookie"),
+  if (!blaze_util::ReadFile(server_dir.Join("request_cookie").ToBazelPath(),
                             &request_cookie_)) {
     return false;
   }
 
-  if (!blaze_util::ReadFile(blaze_util::JoinPath(server_dir, "response_cookie"),
+  if (!blaze_util::ReadFile(server_dir.Join("response_cookie").ToBazelPath(),
                             &response_cookie_)) {
     return false;
   }

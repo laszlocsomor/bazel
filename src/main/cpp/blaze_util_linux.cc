@@ -232,7 +232,7 @@ void WriteSystemSpecificProcessIdentifier(
 // On Linux we use a combination of PID and start time to identify the server
 // process. That is supposed to be unique unless one can start more processes
 // than there are PIDs available within a single jiffy.
-bool VerifyServerProcess(int pid, const string& output_base) {
+bool VerifyServerProcess(int pid, const blaze_util::Path& output_base) {
   string start_time;
   if (!GetStartTime(ToString(pid), &start_time)) {
     // Cannot read PID file from /proc . Process died meantime, all is good. No
@@ -242,7 +242,7 @@ bool VerifyServerProcess(int pid, const string& output_base) {
 
   string recorded_start_time;
   bool file_present = blaze_util::ReadFile(
-      blaze_util::JoinPath(output_base, "server/server.starttime"),
+      output_base.Join("server/server.starttime").ToBazelPath(),
       &recorded_start_time);
 
   // If start time file got deleted, but PID file didn't, assume that this is an
@@ -251,8 +251,7 @@ bool VerifyServerProcess(int pid, const string& output_base) {
 }
 
 // Not supported.
-void ExcludePathFromBackup(const string &path) {
-}
+void ExcludePathFromBackup(const blaze_util::Path&) { }
 
 int32_t GetExplicitSystemLimit(const int resource) {
   return -1;

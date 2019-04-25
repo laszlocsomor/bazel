@@ -887,7 +887,7 @@ bool SymlinkDirectories(const string &posix_target, const string &posix_name) {
 // On Windows (and Linux) we use a combination of PID and start time to identify
 // the server process. That is supposed to be unique unless one can start more
 // processes than there are PIDs available within a single jiffy.
-bool VerifyServerProcess(int pid, const string& output_base) {
+bool VerifyServerProcess(int pid, const blaze_util::Path& output_base) {
   AutoHandle process(
       ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
   if (!process.IsValid()) {
@@ -906,7 +906,7 @@ bool VerifyServerProcess(int pid, const string& output_base) {
 
   string recorded_start_time;
   bool file_present = blaze_util::ReadFile(
-      blaze_util::JoinPath(output_base, "server/server.starttime"),
+      output_base.Join("server/server.starttime").ToBazelPath(),
       &recorded_start_time);
 
   // If start time file got deleted, but PID file didn't, assume that this is an
@@ -914,7 +914,7 @@ bool VerifyServerProcess(int pid, const string& output_base) {
   return !file_present || recorded_start_time == ToString(start_time);
 }
 
-bool KillServerProcess(int pid, const string& output_base) {
+bool KillServerProcess(int pid, const blaze_util::Path& output_base) {
   AutoHandle process(::OpenProcess(
       PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
   DWORD exitcode = 0;
@@ -940,8 +940,7 @@ void TrySleep(unsigned int milliseconds) {
 }
 
 // Not supported.
-void ExcludePathFromBackup(const string &path) {
-}
+void ExcludePathFromBackup(const blaze_util::Path&) { }
 
 string GetHashedBaseDir(const string& root, const string& hashable) {
   // Builds a shorter output base dir name for Windows.
@@ -1140,15 +1139,17 @@ uint64_t WindowsClock::GetMilliseconds() const {
   return GetMillisecondsAsLargeInt(kFrequency).QuadPart;
 }
 
-uint64_t AcquireLock(const string& output_base, bool batch_mode, bool block,
-                     BlazeLock* blaze_lock) {
-  string lockfile = blaze_util::JoinPath(output_base, "lock");
+uint64_t AcquireLock(const blaze_util::Path& output_base, bool batch_mode,
+                     bool block, BlazeLock* blaze_lock) {
+  blaze_util::Path lockfile = output_base.Join("lock");
   wstring wlockfile;
   string error;
-  if (!blaze_util::AsAbsoluteWindowsPath(lockfile, &wlockfile, &error)) {
+  if (!blaze_util::AsAbsoluteWindowsPath(lockfile.ToPrintablePath(), &wlockfile,
+                                         &error)) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "AcquireLock(" << output_base << "): AsAbsoluteWindowsPath("
-        << lockfile << ") failed: " << error;
+        << "AcquireLock(" << output_base.ToPrintablePath()
+        << "): AsAbsoluteWindowsPath(" << lockfile.ToPrintablePath()
+        << ") failed: " << error;
   }
 
   blaze_lock->handle = INVALID_HANDLE_VALUE;
@@ -1183,7 +1184,7 @@ uint64_t AcquireLock(const string& output_base, bool batch_mode, bool block,
       Sleep(/* dwMilliseconds */ 200);
     } else {
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "AcquireLock(" << lockfile << "): CreateFileW("
+          << "AcquireLock(" << lockfile.ToPrintablePath() << "): CreateFileW("
           << blaze_util::WstringToString(wlockfile)
           << ") failed: " << GetLastErrorString();
     }
@@ -1200,7 +1201,7 @@ uint64_t AcquireLock(const string& output_base, bool batch_mode, bool block,
           /* nNumberOfBytesToLockHigh */ 0,
           /* lpOverlapped */ &overlapped)) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "AcquireLock(" << lockfile << "): LockFileEx("
+        << "AcquireLock(" << lockfile.ToPrintablePath() << "): LockFileEx("
         << blaze_util::WstringToString(wlockfile)
         << ") failed: " << GetLastErrorString();
   }

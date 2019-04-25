@@ -205,7 +205,7 @@ void WriteSystemSpecificProcessIdentifier(
     const string& server_dir, pid_t server_pid) {
 }
 
-bool VerifyServerProcess(int pid, const string &output_base) {
+bool VerifyServerProcess(int pid, const blaze_util::Path&) {
   // TODO(lberki): This only checks for the process's existence, not whether
   // its start time matches. Therefore this might accidentally kill an
   // unrelated process if the server died and the PID got reused.
@@ -214,19 +214,22 @@ bool VerifyServerProcess(int pid, const string &output_base) {
 
 // Sets a flag on path to exclude the path from Apple's automatic backup service
 // (Time Machine)
-void ExcludePathFromBackup(const string &path) {
+void ExcludePathFromBackup(const blaze_util::Path& path) {
+  const std::string path_str = path.ToBazelPath();
   CFScopedReleaser<CFURLRef> cf_url(CFURLCreateFromFileSystemRepresentation(
-      kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(path.c_str()),
-      path.length(), true));
+      kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(path_str.c_str()),
+      path_str.length(), true));
   if (!cf_url.isValid()) {
-    BAZEL_LOG(WARNING) << "unable to exclude '" << path << "' from backups";
+    BAZEL_LOG(WARNING) << "unable to exclude '" << path.ToPrintablePath()
+                       << "' from backups";
     return;
   }
   CFErrorRef cf_error = NULL;
   if (!CFURLSetResourcePropertyForKey(cf_url, kCFURLIsExcludedFromBackupKey,
                                       kCFBooleanTrue, &cf_error)) {
     CFScopedReleaser<CFErrorRef> cf_error_releaser(cf_error);
-    BAZEL_LOG(WARNING) << "unable to exclude '" << path << "' from backups: "
+    BAZEL_LOG(WARNING) << "unable to exclude '" << path.ToPrintablePath()
+                       << "' from backups: "
                        << DescriptionFromCFError(cf_error_releaser);
     return;
   }

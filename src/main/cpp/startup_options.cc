@@ -605,10 +605,8 @@ static std::string GetSimpleLogHandlerProps(
 
 void StartupOptions::AddJVMLoggingArguments(std::vector<string> *result) const {
   // Configure logging
-  const string propFile = blaze_util::PathAsJvmFlag(
-      blaze_util::JoinPath(output_base, "javalog.properties"));
-  const string java_log(
-      blaze_util::PathAsJvmFlag(blaze_util::JoinPath(output_base, "java.log")));
+  const string propFile = output_base.Join("javalog.properties").ToFlagValue();
+  const string java_log = output_base.Join("java.log").ToFlagValue();
   const std::string loggingProps =
       GetSimpleLogHandlerProps(java_log, java_logging_formatter);
 

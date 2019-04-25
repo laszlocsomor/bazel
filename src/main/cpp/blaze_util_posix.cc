@@ -569,22 +569,24 @@ static int setlk(int fd, struct flock *lock) {
   return -1;
 }
 
-uint64_t AcquireLock(const string& output_base, bool batch_mode, bool block,
-                     BlazeLock* blaze_lock) {
-  string lockfile = blaze_util::JoinPath(output_base, "lock");
-  int lockfd = open(lockfile.c_str(), O_CREAT|O_RDWR, 0644);
+uint64_t AcquireLock(const blaze_util::Path& output_base, bool batch_mode,
+                     bool block, BlazeLock* blaze_lock) {
+  blaze_util::Path lockfile = output_base.Join("lock");
+  int lockfd = open(lockfile.ToBazelPath().c_str(), O_CREAT|O_RDWR, 0644);
 
   if (lockfd < 0) {
+    string err = GetLastErrorString();
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "cannot open lockfile '" << lockfile
-        << "' for writing: " << GetLastErrorString();
+        << "cannot open lockfile '" << lockfile.ToPrintablePath()
+        << "' for writing: " << err;
   }
 
   // Keep server from inheriting a useless fd if we are not in batch mode
   if (!batch_mode) {
     if (fcntl(lockfd, F_SETFD, FD_CLOEXEC) == -1) {
+      string err = GetLastErrorString();
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "fcntl(F_SETFD) failed for lockfile: " << GetLastErrorString();
+          << "fcntl(F_SETFD) failed for lockfile: " << err;
     }
   }
 
@@ -666,7 +668,7 @@ void ReleaseLock(BlazeLock* blaze_lock) {
   close(blaze_lock->lockfd);
 }
 
-bool KillServerProcess(int pid, const string& output_base) {
+bool KillServerProcess(int pid, const blaze_util::Path& output_base) {
   // Kill the process and make sure it's dead before proceeding.
   killpg(pid, SIGKILL);
   if (!AwaitServerProcessTermination(pid, output_base,

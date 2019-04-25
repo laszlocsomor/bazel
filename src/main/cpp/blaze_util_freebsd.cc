@@ -165,7 +165,7 @@ void WriteSystemSpecificProcessIdentifier(
     const string& server_dir, pid_t server_pid) {
 }
 
-bool VerifyServerProcess(int pid, const string &output_base) {
+bool VerifyServerProcess(int pid, const blaze_util::Path&) {
   // TODO(lberki): This only checks for the process's existence, not whether
   // its start time matches. Therefore this might accidentally kill an
   // unrelated process if the server died and the PID got reused.
@@ -173,8 +173,7 @@ bool VerifyServerProcess(int pid, const string &output_base) {
 }
 
 // Not supported.
-void ExcludePathFromBackup(const string &path) {
-}
+void ExcludePathFromBackup(const blaze_util::Path&) { }
 
 int32_t GetExplicitSystemLimit(const int resource) {
   return -1;

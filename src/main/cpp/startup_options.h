@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "src/main/cpp/util/exit_code.h"
+#include "src/main/cpp/util/path.h"
 
 namespace blaze {
 
@@ -207,7 +208,7 @@ class StartupOptions {
 
   // Blaze's output base.  Everything is relative to this.  See
   // the BlazeDirectories Java class for details.
-  std::string output_base;
+  blaze_util::Path output_base;
 
   // Installation base for a specific release installation.
   std::string install_base;
