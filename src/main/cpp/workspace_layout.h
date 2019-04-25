@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "src/main/cpp/util/path.h"
+
 namespace blaze {
 
 // Provides methods to compute paths related to the workspace.
@@ -26,7 +28,7 @@ class WorkspaceLayout {
   virtual ~WorkspaceLayout() = default;
 
   // Returns the directory to use for storing outputs.
-  virtual std::string GetOutputRoot() const;
+  virtual blaze_util::Path GetOutputRoot() const;
 
   // Given the working directory, returns the nearest enclosing directory with a
   // WORKSPACE file in it.  If there is no such enclosing directory, returns "".

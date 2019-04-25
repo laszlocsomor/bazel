@@ -18,6 +18,31 @@
 
 namespace blaze_util {
 
+class Path {
+ public:
+  Path() {}
+  Path(const Path& o) : p_(o.p_) {}
+  Path& operator=(const Path& o) { p_ = o.p_; return *this; }
+  Path(Path&& o) : p_(std::move(o.p_)) {}
+  Path& operator=(Path&& o) { p_ = std::move(o.p_); return *this; }
+
+  Path(const char* p);
+  Path(std::string p);
+
+  std::string ToPrintablePath() const;
+
+  // Returns a path in Bazel's own representation.
+  //
+  // On Unixes, this is a normal Unix path.
+  // On Windows, this is a normalized Unix-style path using forward slashes
+  // (e.g. "foo/bar" or "../foo"), potentially starting with a drive letter
+  // (e.g. "C:/foo/bar"), or it is "NUL".
+  std::string ToBazelPath() const;
+
+ private:
+  std::string p_;
+};
+
 // Convert a path from Bazel internal form to underlying OS form.
 // On Unixes this is an identity operation.
 // On Windows, Bazel internal form is cygwin path, and underlying OS form

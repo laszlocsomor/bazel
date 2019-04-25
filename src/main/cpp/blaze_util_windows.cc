@@ -391,7 +391,7 @@ string GetSelfPath() {
   return string(blaze_util::WstringToCstring(buffer).get());
 }
 
-string GetOutputRoot() {
+blaze_util::Path GetOutputRoot() {
   string home = GetHomeDir();
   if (home.empty()) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)

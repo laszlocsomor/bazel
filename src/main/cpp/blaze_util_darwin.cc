@@ -95,7 +95,7 @@ static string DescriptionFromCFError(CFErrorRef cf_err) {
   return UTF8StringFromCFStringRef(cf_err_string);
 }
 
-string GetOutputRoot() {
+blaze_util::Path GetOutputRoot() {
   return "/var/tmp";
 }
 

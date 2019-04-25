@@ -108,7 +108,7 @@ StartupOptions::StartupOptions(const string &product_name,
                     << output_root << "' and max_idle_secs default is '"
                     << max_idle_secs << "'.";
   } else {
-    output_root = workspace_layout->GetOutputRoot();
+    output_root = workspace_layout->GetOutputRoot().ToBazelPath();
     max_idle_secs = 3 * 3600;
     BAZEL_LOG(INFO) << "output root is '" << output_root
                     << "' and max_idle_secs default is '" << max_idle_secs

@@ -20,7 +20,6 @@
 #include "src/main/cpp/util/file.h"
 #include "src/main/cpp/util/file_platform.h"
 #include "src/main/cpp/util/path.h"
-#include "src/main/cpp/util/path_platform.h"
 
 namespace blaze {
 
@@ -29,7 +28,7 @@ using std::vector;
 
 static const char kWorkspaceMarker[] = "WORKSPACE";
 
-string WorkspaceLayout::GetOutputRoot() const {
+blaze_util::Path WorkspaceLayout::GetOutputRoot() const {
   return blaze::GetOutputRoot();
 }
 

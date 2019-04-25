@@ -43,7 +43,7 @@ using blaze_util::GetLastErrorString;
 using std::string;
 using std::vector;
 
-string GetOutputRoot() {
+blaze_util::Path GetOutputRoot() {
   string base;
   string home = GetHomeDir();
   if (!home.empty()) {

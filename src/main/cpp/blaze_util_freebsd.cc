@@ -43,7 +43,7 @@ namespace blaze {
 using blaze_util::GetLastErrorString;
 using std::string;
 
-string GetOutputRoot() {
+blaze_util::Path GetOutputRoot() {
   char buf[2048];
   struct passwd pwbuf;
   struct passwd *pw = NULL;

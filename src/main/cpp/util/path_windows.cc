@@ -595,4 +595,22 @@ bool TestOnly_NormalizeWindowsPath(const std::string& path,
   return NormalizeWindowsPath(path, result);
 }
 
+static void SetPath(std::string s, std::string* p) {
+  if (IsDevNull(s.c_str())) {
+    *p = "NUL";
+  }
+  if (!NormalizeWindowsPath(s, p)) {
+    BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
+        << "NormalizeWindowsPath(" << s << ") failed";
+  }
+}
+
+Path::Path(const char* p) { SetPath(p, &p_); }
+
+Path::Path(std::string p) { SetPath(std::move(p), &p_); }
+
+std::string Path::ToPrintablePath() const { return p_; }
+
+std::string Path::ToBazelPath() const { return p_; }
+
 }  // namespace blaze_util

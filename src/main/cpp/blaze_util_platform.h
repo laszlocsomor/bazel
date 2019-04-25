@@ -20,8 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "src/main/cpp/util/port.h"
 #include "src/main/cpp/blaze_util.h"
+#include "src/main/cpp/util/path_platform.h"
+#include "src/main/cpp/util/port.h"
 
 namespace blaze {
 
@@ -101,7 +102,7 @@ std::string GetProcessIdAsString();
 std::string GetSelfPath();
 
 // Returns the directory Bazel can use to store output.
-std::string GetOutputRoot();
+blaze_util::Path GetOutputRoot();
 
 // Returns the current user's home directory, or the empty string if unknown.
 // On Linux/macOS, this is $HOME. On Windows this is %USERPROFILE%.

@@ -94,4 +94,12 @@ std::string MakeAbsoluteAndResolveEnvvars(const std::string &path) {
   return MakeAbsolute(ResolveEnvvars(path));
 }
 
+Path::Path(const char* p) : p_(p) {}
+
+Path::Path(std::string p) : p_(std::move(p)) {}
+
+std::string Path::ToPrintablePath() const { return p_; }
+
+std::string Path::ToBazelPath() const { return p_; }
+
 }  // namespace blaze_util
