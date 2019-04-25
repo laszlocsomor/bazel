@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "src/main/cpp/util/path.h"
 #include "src/main/cpp/util/port.h"  // pid_t on Windows/MSVC
 
 namespace blaze {
@@ -55,7 +56,7 @@ struct GlobalVariables {
 
   // Whrere to write the server's JVM's output. Default value is
   // <output_base>/server/jvm.out.
-  std::string jvm_log_file;
+  blaze_util::Path jvm_log_file;
 
   // Whether or not the jvm_log_file should be opened with O_APPEND.
   bool jvm_log_file_append;

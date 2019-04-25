@@ -45,6 +45,8 @@ class Path {
 
   Path Canonicalize() const;
   bool CanAccessDirectory() const;
+  bool CanExecuteFile() const;
+  bool CanReadFile() const;
   bool Empty() const { return p_.empty(); }
   bool Exists() const;
   bool IsDirectory() const;

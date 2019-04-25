@@ -621,6 +621,10 @@ Path Path::Canonicalize() const { return MakeCanonical(p_.c_str()); }
 
 bool Path::CanAccessDirectory() const { return PathExists(p_); }
 
+bool Path::CanExecuteFile() const { return blaze_util::CanExecuteFile(p_); }
+
+bool Path::CanReadFile() const { return blaze_util::CanReadFile(p_); }
+
 bool Path::Exists() const { return PathExists(p_); }
 
 bool Path::IsDirectory() const { return blaze_util::IsDirectory(p_); }

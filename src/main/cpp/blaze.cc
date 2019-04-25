@@ -396,8 +396,8 @@ static string EscapeForOptionSource(const string &input) {
 
 // Returns the installed embedded binaries directory, under the shared
 // install_base location.
-string GetEmbeddedBinariesRoot(const string &install_base) {
-  return blaze_util::JoinPath(install_base, "_embedded_binaries");
+blaze_util::Path GetEmbeddedBinariesRoot(const blaze_util::Path& install_base) {
+  return install_base.Join("_embedded_binaries");
 }
 
 // Returns the JVM command argument array.
@@ -420,7 +420,7 @@ static vector<string> GetArgumentArray(
   result.push_back("-XX:HeapDumpPath=" + heap_crash_path.ToFlagValue());
 
   // TODO(b/109998449): only assume JDK >= 9 for embedded JDKs
-  if (!globals->options->GetEmbeddedJavabase().empty()) {
+  if (!globals->options->GetEmbeddedJavabase().Empty()) {
     // In JDK9 we have seen a slow down when using the default G1 collector
     // and thus switch back to parallel gc.
     result.push_back("-XX:+UseParallelOldGC");
@@ -454,14 +454,14 @@ static vector<string> GetArgumentArray(
   set<string> java_library_paths;
   std::stringstream java_library_path;
   java_library_path << "-Djava.library.path=";
-  string real_install_dir =
+  blaze_util::Path real_install_dir =
       GetEmbeddedBinariesRoot(globals->options->install_base);
 
   bool first = true;
   for (const auto &it : globals->extracted_binaries) {
     if (IsSharedLibrary(it)) {
-      string libpath(blaze_util::PathAsJvmFlag(
-          blaze_util::JoinPath(real_install_dir, blaze_util::Dirname(it))));
+      string libpath(
+          real_install_dir.Join(blaze_util::Dirname(it)).ToFlagValue());
       // Only add the library path if it's not added yet.
       if (java_library_paths.find(libpath) == java_library_paths.end()) {
         java_library_paths.insert(libpath);
@@ -519,7 +519,7 @@ static vector<string> GetArgumentArray(
   result.push_back("--output_user_root=" +
                    blaze_util::ConvertPath(globals->options->output_user_root));
   result.push_back("--install_base=" +
-                   blaze_util::ConvertPath(globals->options->install_base));
+                   globals->options->install_base.ToFlagValue());
   result.push_back("--install_md5=" + globals->install_md5);
   result.push_back("--output_base=" +
                    globals->options->output_base.ToFlagValue());
@@ -527,8 +527,9 @@ static vector<string> GetArgumentArray(
                    blaze_util::ConvertPath(globals->workspace));
   result.push_back("--default_system_javabase=" + GetSystemJavabase());
 
-  if (!globals->options->server_jvm_out.empty()) {
-    result.push_back("--server_jvm_out=" + globals->options->server_jvm_out);
+  if (!globals->options->server_jvm_out.Empty()) {
+    result.push_back("--server_jvm_out=" +
+                     globals->options->server_jvm_out.ToFlagValue());
   }
 
   if (globals->options->deep_execroot) {
@@ -684,7 +685,7 @@ static int StartServer(const WorkspaceLayout *workspace_layout,
                         BlazeServerStartup **server_startup) {
   vector<string> jvm_args_vector = GetArgumentArray(workspace_layout);
   string argument_string = GetArgumentString(jvm_args_vector);
-  const string binaries_dir =
+  const blaze_util::Path binaries_dir =
       GetEmbeddedBinariesRoot(globals->options->install_base);
   blaze_util::Path server_dir = globals->options->output_base.Join("server");
   // Write the cmdline argument string to the server dir. If we get to this
@@ -707,8 +708,9 @@ static int StartServer(const WorkspaceLayout *workspace_layout,
   GoToWorkspace(workspace_layout);
 
   return ExecuteDaemon(exe, jvm_args_vector, PrepareEnvironmentForJvm(),
-                       globals->jvm_log_file, globals->jvm_log_file_append,
-                       binaries_dir, server_dir.ToBazelPath(), globals->options,
+                       globals->jvm_log_file.ToBazelPath(),
+                       globals->jvm_log_file_append, binaries_dir.ToBazelPath(),
+                       server_dir.ToBazelPath(), globals->options,
                        server_startup);
 }
 
@@ -765,7 +767,9 @@ static void StartStandalone(const WorkspaceLayout *workspace_layout,
   }
 }
 
-static void WriteFileToStderrOrDie(const char *file_name) {
+static void WriteFileToStderrOrDie(const blaze_util::Path& path) {
+  string path_str = path.ToBazelPath();
+  const char* file_name = path_str.c_str();
   FILE *fp = fopen(file_name, "r");
   if (fp == NULL) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
@@ -887,11 +891,11 @@ static void StartServerAndConnect(const WorkspaceLayout *workspace_layout,
         // Don't dump the log if we were appending - the user should know where
         // to find it, and who knows how much content they may have accumulated.
         BAZEL_LOG(USER) << "Server crashed during startup. See "
-                        << globals->jvm_log_file;
+                        << globals->jvm_log_file.ToPrintablePath();
       } else {
         BAZEL_LOG(USER) << "Server crashed during startup. Now printing "
-                        << globals->jvm_log_file;
-        WriteFileToStderrOrDie(globals->jvm_log_file.c_str());
+                        << globals->jvm_log_file.ToPrintablePath();
+        WriteFileToStderrOrDie(globals->jvm_log_file);
       }
       exit(blaze_exit_code::INTERNAL_ERROR);
     }
@@ -1040,10 +1044,10 @@ static void ActuallyExtractData(const string &argv0,
 // becomes visible automically at the new path.
 static void ExtractData(const string &self_path) {
   // If the install dir doesn't exist, create it, if it does, we know it's good.
-  if (!blaze_util::PathExists(globals->options->install_base)) {
+  if (!globals->options->install_base.Exists()) {
     uint64_t st = GetMillisecondsMonotonic();
     // Work in a temp dir to avoid races.
-    string tmp_install = globals->options->install_base + ".tmp." +
+    string tmp_install = globals->options->install_base.ToBazelPath() + ".tmp." +
                          blaze::GetProcessIdAsString();
     string tmp_binaries =
         blaze_util::JoinPath(tmp_install, "_embedded_binaries");
@@ -1056,7 +1060,8 @@ static void ExtractData(const string &self_path) {
     int attempts = 0;
     while (attempts < 120) {
       int result = blaze_util::RenameDirectory(
-          tmp_install.c_str(), globals->options->install_base.c_str());
+          tmp_install.c_str(),
+          globals->options->install_base.ToBazelPath().c_str());
       if (result == blaze_util::kRenameDirectorySuccess ||
           result == blaze_util::kRenameDirectoryFailureNotEmpty) {
         // If renaming fails because the directory already exists and is not
@@ -1081,23 +1086,25 @@ static void ExtractData(const string &self_path) {
           << "' could not be renamed into place: " << GetLastErrorString();
     }
   } else {
-    if (!blaze_util::IsDirectory(globals->options->install_base)) {
+    if (!globals->options->install_base.IsDirectory()) {
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "install base directory '" << globals->options->install_base
+          << "install base directory '"
+          << globals->options->install_base.ToPrintablePath()
           << "' could not be created. It exists but is not a directory.";
     }
 
     std::unique_ptr<blaze_util::IFileMtime> mtime(
         blaze_util::CreateFileMtime());
-    string real_install_dir = blaze_util::JoinPath(
-        globals->options->install_base, "_embedded_binaries");
+    blaze_util::Path real_install_dir =
+        globals->options->install_base.Join("_embedded_binaries");
     for (const auto &it : globals->extracted_binaries) {
-      string path = blaze_util::JoinPath(real_install_dir, it);
-      if (!mtime->IsUntampered(path)) {
+      blaze_util::Path path = real_install_dir.Join(it);
+      if (!mtime->IsUntampered(path.ToBazelPath())) {
         BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-            << "corrupt installation: file '" << path
+            << "corrupt installation: file '" << path.ToPrintablePath()
             << "' is missing or modified.  Please remove '"
-            << globals->options->install_base << "' and try again.";
+            << globals->options->install_base.ToPrintablePath()
+            << "' and try again.";
       }
     }
   }
@@ -1234,7 +1241,8 @@ static void EnsureCorrectRunningVersion(BlazeServer *server) {
       blaze_util::ReadDirectorySymlink(installation_path.ToBazelPath(),
                                        &prev_installation);
   if (!ok || !blaze_util::CompareAbsolutePaths(
-                 prev_installation, globals->options->install_base)) {
+                 prev_installation,
+                 globals->options->install_base.ToBazelPath())) {
     if (server->Connected()) {
       BAZEL_LOG(INFO)
           << "Killing running server because it is using another version of "
@@ -1244,7 +1252,7 @@ static void EnsureCorrectRunningVersion(BlazeServer *server) {
     }
 
     blaze_util::UnlinkPath(installation_path.ToBazelPath());
-    if (!SymlinkDirectories(globals->options->install_base,
+    if (!SymlinkDirectories(globals->options->install_base.ToBazelPath(),
                             installation_path.ToBazelPath())) {
       string err = GetLastErrorString();
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
@@ -1256,10 +1264,11 @@ static void EnsureCorrectRunningVersion(BlazeServer *server) {
     // find install bases that haven't been used for a long time
     std::unique_ptr<blaze_util::IFileMtime> mtime(
         blaze_util::CreateFileMtime());
-    if (!mtime->SetToNow(globals->options->install_base)) {
+    if (!mtime->SetToNow(globals->options->install_base.ToBazelPath())) {
+      string err = GetLastErrorString();
       BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-          << "failed to set timestamp on '" << globals->options->install_base
-          << "': " << GetLastErrorString();
+          << "failed to set timestamp on '"
+          << globals->options->install_base.ToPrintablePath() << "': " << err;
     }
   }
 }
@@ -1356,12 +1365,12 @@ static void ComputeBaseDirectories(const WorkspaceLayout *workspace_layout,
   // The default install_base is <output_user_root>/install/<md5(blaze)>
   // but if an install_base is specified on the command line, we use that as
   // the base instead.
-  if (globals->options->install_base.empty()) {
-    string install_user_root =
+  if (globals->options->install_base.Empty()) {
+    blaze_util::Path install_user_root =
         blaze_util::JoinPath(globals->options->output_user_root, "install");
     ComputeInstallMd5AndNoteAllFiles(self_path);
-    globals->options->install_base = blaze_util::JoinPath(install_user_root,
-                                                          globals->install_md5);
+    globals->options->install_base =
+        install_user_root.Join(globals->install_md5);
   } else {
     // We still need to populate globals->install_md5 and
     // globals->extracted_binaries.
@@ -1407,12 +1416,12 @@ static void ComputeBaseDirectories(const WorkspaceLayout *workspace_layout,
   }
 
   globals->lockfile = globals->options->output_base.Join("lock").ToBazelPath();
-  if (!globals->options->server_jvm_out.empty()) {
+  if (!globals->options->server_jvm_out.Empty()) {
     globals->jvm_log_file = globals->options->server_jvm_out;
     globals->jvm_log_file_append = true;
   } else {
     globals->jvm_log_file =
-        globals->options->output_base.Join("server/jvm.out").ToBazelPath();
+        globals->options->output_base.Join("server/jvm.out");
     globals->jvm_log_file_append = false;
   }
 }
@@ -1583,7 +1592,7 @@ int Main(int argc, const char *argv[], WorkspaceLayout *workspace_layout,
   WarnFilesystemType(globals->options->output_base.ToBazelPath());
 
   ExtractData(self_path);
-  globals->jvm_path = globals->options->GetJvm();
+  globals->jvm_path = globals->options->GetJvm().ToBazelPath();
 
   blaze_server->Connect();
 
@@ -1996,12 +2005,12 @@ unsigned int GrpcBlazeServer::Communicate() {
     BAZEL_LOG(USER) << "\nServer terminated abruptly (error code: "
                     << status.error_code() << ", error message: '"
                     << status.error_message() << "', log file: '"
-                    << globals->jvm_log_file << "')\n";
+                    << globals->jvm_log_file.ToPrintablePath() << "')\n";
     return GetExitCodeForAbruptExit(*globals);
   } else if (!finished) {
     BAZEL_LOG(USER)
         << "\nServer finished RPC without an explicit exit code (log file: '"
-        << globals->jvm_log_file << "')\n";
+        << globals->jvm_log_file.ToPrintablePath() << "')\n";
     return GetExitCodeForAbruptExit(*globals);
   } else if (final_response.has_exec_request()) {
     const command_server::ExecRequest& request = final_response.exec_request();

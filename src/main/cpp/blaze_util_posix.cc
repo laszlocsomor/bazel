@@ -166,7 +166,8 @@ static void handler(int signum) {
     case SIGQUIT:
       SigPrintf("\nSending SIGQUIT to JVM process %d (see %s).\n\n",
                 SignalHandler::Get().GetGlobals()->server_pid,
-                SignalHandler::Get().GetGlobals()->jvm_log_file.c_str());
+                SignalHandler::Get().GetGlobals()->jvm_log_file
+                    .ToPrintablePath().c_str());
       kill(SignalHandler::Get().GetGlobals()->server_pid, SIGQUIT);
       break;
   }
