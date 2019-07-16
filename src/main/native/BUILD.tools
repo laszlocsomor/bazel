@@ -1,0 +1,2 @@
+# libunix.* is only present on Linux and macOS.
+exports_files(glob(["libunix.*", allow_empty = True))

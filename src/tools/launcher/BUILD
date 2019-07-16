@@ -6,6 +6,12 @@ filegroup(
     visibility = ["//src:__pkg__"],
 )
 
+filegroup(
+    name = "embedded_tools",
+    srcs = [],
+    visibility = ["//src:__pkg__"],
+)
+
 win_cc_binary(
     name = "launcher",
     srcs = ["launcher_main.cc"],

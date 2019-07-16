@@ -52,7 +52,7 @@ filegroup(
         "//tools/j2objc:srcs",
         "//tools/jdk:package-srcs",
         "//tools/jdk:srcs",
-        "//tools/launcher:srcs",
+        "//tools/launcher:embedded_tools",
         "//tools/def_parser:srcs",
         "//tools/platforms:srcs",
         "//tools/objc:srcs",

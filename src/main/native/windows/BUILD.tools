@@ -1,0 +1,2 @@
+# windows_jni.dll is only present on Windows.
+exports_files(glob(["windows_jni.*", allow_empty = True))

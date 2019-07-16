@@ -5,7 +5,7 @@ filegroup(
     srcs = glob(["**"]),
 )
 
-alias(
-    name = "launcher",
-    actual = "//src/tools/launcher:launcher",
+filegroup(
+    name = "embedded_tools",
+    srcs = ["BUILD.tools"],
 )

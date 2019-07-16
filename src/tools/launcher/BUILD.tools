@@ -1,0 +1,8 @@
+# filegroup(
+#     name = "launcher",
+#     srcs = select({
+#         "//src/conditions:host_windows": ["launcher.exe"],
+#         "//conditions:default": ["launcher-bin"],
+#     }),
+#     visibility = ["//visibility:public"],
+# )
