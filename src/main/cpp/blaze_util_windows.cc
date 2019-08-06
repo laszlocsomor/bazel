@@ -52,6 +52,7 @@
 #include "src/main/native/windows/file.h"
 #include "src/main/native/windows/process.h"
 #include "src/main/native/windows/util.h"
+#include "src/tools/launcher/util/launcher_util.h"
 
 namespace blaze {
 
@@ -477,9 +478,6 @@ namespace {
 
 // Max command line length is per CreateProcess documentation
 // (https://msdn.microsoft.com/en-us/library/ms682425(VS.85).aspx)
-//
-// Quoting rules are described here:
-// https://blogs.msdn.microsoft.com/twistylittlepassagesallalike/2011/04/23/everyone-quotes-command-line-arguments-the-wrong-way/
 
 static const int MAX_CMDLINE_LENGTH = 32768;
 
@@ -510,41 +508,42 @@ static void CreateCommandLine(CmdLine* result, const string& exe,
       cmdline << L' ';
     }
 
-    bool has_space = s.find(" ") != string::npos;
-
-    if (has_space) {
-      cmdline << L'\"';
-    }
+//    bool has_space = s.find(" ") != string::npos;
+//
+//    if (has_space) {
+//      cmdline << L'\"';
+//    }
 
     wstring ws = blaze_util::CstringToWstring(s.c_str()).get();
-    std::wstring::const_iterator it = ws.begin();
-    while (it != ws.end()) {
-      wchar_t ch = *it++;
-      switch (ch) {
-        case L'"':
-          // Escape double quotes
-          cmdline << L"\\\"";
-          break;
-
-        case L'\\':
-          if (it == ws.end()) {
-            // Backslashes at the end of the string are quoted if we add quotes
-            cmdline << (has_space ? L"\\\\" : L"\\");
-          } else {
-            // Backslashes everywhere else are quoted if they are followed by a
-            // quote or a backslash
-            cmdline << (*it == L'"' || *it == L'\\' ? L"\\\\" : L"\\");
-          }
-          break;
-
-        default:
-          cmdline << ch;
-      }
-    }
-
-    if (has_space) {
-      cmdline << L'\"';
-    }
+    cmdline << ws;
+//    std::wstring::const_iterator it = ws.begin();
+//    while (it != ws.end()) {
+//      wchar_t ch = *it++;
+//      switch (ch) {
+//        case L'"':
+//          // Escape double quotes
+//          cmdline << L"\\\"";
+//          break;
+//
+//        case L'\\':
+//          if (it == ws.end()) {
+//            // Backslashes at the end of the string are quoted if we add quotes
+//            cmdline << (has_space ? L"\\\\" : L"\\");
+//          } else {
+//            // Backslashes everywhere else are quoted if they are followed by a
+//            // quote or a backslash
+//            cmdline << (*it == L'"' || *it == L'\\' ? L"\\\\" : L"\\");
+//          }
+//          break;
+//
+//        default:
+//          cmdline << ch;
+//      }
+//    }
+//
+//    if (has_space) {
+//      cmdline << L'\"';
+//    }
   }
 
   wstring cmdline_str = cmdline.str();
@@ -722,8 +721,16 @@ int ExecuteDaemon(const string& exe,
   STARTUPINFOEXW startupInfoEx = {0};
   lpAttributeList->InitStartupInfoExW(&startupInfoEx);
 
+  std::vector<string> esc_args_vector;
+  for (const string& a : args_vector) {
+    std::wstring wa = blaze_util::CstringToWstring(a.c_str()).get();
+    std::wstring wesc = bazel::launcher::WindowsEscapeArg2(wa);
+    std::string esc = blaze_util::WstringToCstring(wesc.c_str()).get();
+    esc_args_vector.push_back(esc);
+  }
+
   CmdLine cmdline;
-  CreateCommandLine(&cmdline, exe, args_vector);
+  CreateCommandLine(&cmdline, exe, esc_args_vector);
 
   BOOL ok;
   {

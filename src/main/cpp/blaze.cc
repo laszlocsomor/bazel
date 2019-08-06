@@ -72,6 +72,10 @@
 #include "src/main/protobuf/command_server.grpc.pb.h"
 #include "third_party/ijar/zip.h"
 
+#if defined(_WIN32) || defined(__CYGWIN__)
+#include "src/tools/launcher/util/launcher_util.h"
+#endif
+
 using blaze_util::GetLastErrorString;
 
 extern char** environ;
@@ -674,6 +678,14 @@ static void RunBatchMode(
 
   jvm_args_vector.insert(jvm_args_vector.end(), command_arguments.begin(),
                          command_arguments.end());
+#if defined(_WIN32) || defined(__CYGWIN__)
+  for (int i = 0; i < jvm_args_vector.size(); ++i) {
+    std::wstring wa = blaze_util::CstringToWstring(jvm_args_vector[i].c_str()).get();
+    std::wstring wesc = bazel::launcher::WindowsEscapeArg2(wa);
+    std::string esc = blaze_util::WstringToCstring(wesc.c_str()).get();
+    jvm_args_vector[i] = esc;
+  }
+#endif
 
   GoToWorkspace(workspace_layout, workspace);
 

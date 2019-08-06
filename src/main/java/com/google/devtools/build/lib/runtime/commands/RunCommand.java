@@ -521,7 +521,11 @@ public class RunCommand implements BlazeCommand  {
 
       ImmutableList<String> shellCmdLine =
           ImmutableList.<String>of(
-              shExecutable.getPathString(), "-c", ShellEscaper.escapeJoinAll(cmdLine));
+              shExecutable.getPathString(), "-c", 
+              OS.getCurrent() == OS.WINDOWS
+                  // Windows: outer escaping is for CreateProcessW, inner escaping is for Bash
+                  ? ShellUtils.windowsEscapeArg(ShellEscaper.escapeJoinAll(cmdLine))
+                  : ShellEscaper.escapeJoinAll(cmdLine));
 
       for (String arg : shellCmdLine) {
         execDescription.addArgv(ByteString.copyFrom(arg, StandardCharsets.ISO_8859_1));
