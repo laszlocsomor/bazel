@@ -62,7 +62,10 @@ public class NewLocalRepositoryFunction extends RepositoryFunction {
       return null;
     }
 
-    PathFragment pathFragment = getTargetPath(rule, directories.getWorkspace());
+    PathFragment pathFragment = getTargetPath(env, rule, directories.getWorkspace());
+    if (pathFragment == null) {
+      return null;
+    }
 
     FileSystem fs = directories.getOutputBase().getFileSystem();
     Path path = fs.getPath(pathFragment);

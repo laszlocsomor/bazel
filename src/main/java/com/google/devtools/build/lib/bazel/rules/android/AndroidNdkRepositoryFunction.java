@@ -266,7 +266,10 @@ public class AndroidNdkRepositoryFunction extends AndroidRepositoryFunction {
     WorkspaceAttributeMapper attributes = WorkspaceAttributeMapper.of(rule);
     PathFragment pathFragment;
     if (attributes.isAttributeValueExplicitlySpecified("path")) {
-      pathFragment = getTargetPath(rule, directories.getWorkspace());
+      pathFragment = getTargetPath(env, rule, directories.getWorkspace());
+      if (pathFragment == null) {
+        return null;
+      }
     } else if (environ.get(PATH_ENV_VAR) != null) {
       pathFragment = getAndroidNdkHomeEnvironmentVar(directories.getWorkspace(), environ);
     } else {

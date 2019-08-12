@@ -51,7 +51,10 @@ public class LocalRepositoryFunction extends RepositoryFunction {
       Map<String, String> markerData,
       SkyKey key)
       throws InterruptedException, RepositoryFunctionException {
-    PathFragment pathFragment = RepositoryFunction.getTargetPath(rule, directories.getWorkspace());
+    PathFragment pathFragment = RepositoryFunction.getTargetPath(env, rule, directories.getWorkspace());
+    if (pathFragment == null) {
+      return null;
+    }
     RepositoryDirectoryValue.Builder result =
         LocalRepositoryFunction.symlink(outputDirectory, pathFragment, env);
     if (result != null) {

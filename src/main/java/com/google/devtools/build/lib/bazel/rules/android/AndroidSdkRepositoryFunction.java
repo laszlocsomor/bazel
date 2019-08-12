@@ -98,7 +98,10 @@ public class AndroidSdkRepositoryFunction extends AndroidRepositoryFunction {
     FileSystem fs = directories.getOutputBase().getFileSystem();
     Path androidSdkPath;
     if (attributes.isAttributeValueExplicitlySpecified("path")) {
-      androidSdkPath = fs.getPath(getTargetPath(rule, directories.getWorkspace()));
+      androidSdkPath = fs.getPath(getTargetPath(env, rule, directories.getWorkspace()));
+      if (androidSdkPath == null) {
+        return null;
+      }
     } else if (environ.get(PATH_ENV_VAR) != null) {
       androidSdkPath =
           fs.getPath(getAndroidHomeEnvironmentVar(directories.getWorkspace(), environ));

@@ -19,6 +19,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.BaseEncoding;
+//import com.google.devtools.build.lib.actions.FileStateValue;
 import com.google.devtools.build.lib.actions.FileStateValue.RegularFileStateValue;
 import com.google.devtools.build.lib.actions.FileValue;
 import com.google.devtools.build.lib.analysis.BlazeDirectories;
@@ -38,11 +39,14 @@ import com.google.devtools.build.lib.repository.ExternalPackageException;
 import com.google.devtools.build.lib.repository.ExternalPackageUtil;
 import com.google.devtools.build.lib.repository.ExternalRuleNotFoundException;
 import com.google.devtools.build.lib.skyframe.ActionEnvironmentFunction;
+import com.google.devtools.build.lib.skyframe.ClientEnvironmentFunction;
+import com.google.devtools.build.lib.skyframe.ClientEnvironmentValue;
 import com.google.devtools.build.lib.skyframe.PackageLookupFunction;
 import com.google.devtools.build.lib.skyframe.PackageLookupValue;
 import com.google.devtools.build.lib.skyframe.PrecomputedValue;
 import com.google.devtools.build.lib.syntax.EvalException;
 import com.google.devtools.build.lib.syntax.Type;
+import com.google.devtools.build.lib.util.OS;
 import com.google.devtools.build.lib.vfs.FileSystemUtils;
 import com.google.devtools.build.lib.vfs.Path;
 import com.google.devtools.build.lib.vfs.PathFragment;
@@ -440,8 +444,8 @@ public abstract class RepositoryFunction {
   }
 
   @VisibleForTesting
-  protected static PathFragment getTargetPath(Rule rule, Path workspace)
-      throws RepositoryFunctionException {
+  protected static PathFragment getTargetPath(Environment env, Rule rule, Path workspace)
+      throws RepositoryFunctionException, InterruptedException {
     WorkspaceAttributeMapper mapper = WorkspaceAttributeMapper.of(rule);
     String path;
     try {
@@ -450,6 +454,22 @@ public abstract class RepositoryFunction {
       throw new RepositoryFunctionException(e, Transience.PERSISTENT);
     }
     PathFragment pathFragment = PathFragment.create(path);
+    if (path.startsWith("~/")) {
+      String homeEnv = OS.getCurrent() == OS.WINDOWS ? "USERPROFILE" : "HOME";
+      ClientEnvironmentValue v =
+          (ClientEnvironmentValue) env.getValue(ClientEnvironmentFunction.key(homeEnv));
+      if (env.valuesMissing()) {
+        return null;
+      }
+
+      PathFragment homeDir = PathFragment.create(v.getValue());
+      if (homeDir.isEmpty() || !homeDir.isAbsolute()) {
+        throw new RepositoryFunctionException(
+            new IOException(String.format("%s is empty or not absolute", homeEnv)),
+            Transience.PERSISTENT);
+      }
+      pathFragment = homeDir.getRelative(pathFragment.relativeTo("~"));
+    }
     return workspace.getRelative(pathFragment).asFragment();
   }
 
