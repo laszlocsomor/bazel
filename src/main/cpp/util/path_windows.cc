@@ -73,8 +73,8 @@ std::string ConvertPath(const std::string& path) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
         << "ConvertPath(" << path << "): AsWindowsPath failed: " << error;
   }
-  std::transform(converted_path.begin(), converted_path.end(),
-                 converted_path.begin(), ::tolower);
+//  std::transform(converted_path.begin(), converted_path.end(),
+//                 converted_path.begin(), ::tolower);
   return converted_path;
 }
 
@@ -87,7 +87,7 @@ std::string MakeAbsolute(const std::string& path) {
         << "MakeAbsolute(" << path
         << "): AsAbsoluteWindowsPath failed: " << error;
   }
-  std::transform(wpath.begin(), wpath.end(), wpath.begin(), ::towlower);
+//  std::transform(wpath.begin(), wpath.end(), wpath.begin(), ::towlower);
   return std::string(
       WstringToCstring(RemoveUncPrefixMaybe(wpath.c_str())).get());
 }
@@ -119,7 +119,9 @@ std::string MakeAbsoluteAndResolveEnvvars(const std::string& path) {
 }
 
 bool CompareAbsolutePaths(const std::string& a, const std::string& b) {
-  return ConvertPath(a) == ConvertPath(b);
+  std::string aa = ConvertPath(a);
+  std::string bb = ConvertPath(b);
+  return aa.size() == bb.size() && stricmp(aa.c_str(), bb.c_str()) == 0;
 }
 
 std::string PathAsJvmFlag(const std::string& path) {
@@ -412,7 +414,7 @@ bool AsShortWindowsPath(const std::string& path, std::string* result,
   }
 
   result->assign(WstringToCstring(wresult.c_str()).get());
-  ToLower(result);
+  //ToLower(result);
   return true;
 }
 

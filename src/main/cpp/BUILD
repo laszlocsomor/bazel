@@ -13,6 +13,16 @@ WIN_LINK_OPTS = [
     "-DEFAULTLIB:ws2_32.lib",  # grpc
 ]
 
+cc_binary(
+    name = "x",
+    srcs = ["x.cc"],
+)
+
+cc_binary(
+    name = "xx",
+    srcs = ["x_with~1.cc"],
+)
+
 cc_library(
     name = "blaze_util",
     srcs = [

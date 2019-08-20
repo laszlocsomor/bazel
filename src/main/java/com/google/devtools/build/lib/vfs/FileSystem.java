@@ -200,6 +200,11 @@ public abstract class FileSystem {
   /** Deletes the file denoted by {@code path}. See {@link Path#delete} for specification. */
   public abstract boolean delete(Path path) throws IOException;
 
+  public Path correctCasing(Path p) {
+    // TODO
+    return p;
+  }
+
   /**
    * Deletes all directory trees recursively beneath the given path and removes that path as well.
    *

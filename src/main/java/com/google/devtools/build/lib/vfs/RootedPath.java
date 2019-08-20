@@ -48,20 +48,30 @@ public class RootedPath implements Serializable {
 
   /** Returns a rooted path representing {@code rootRelativePath} relative to {@code root}. */
   public static RootedPath toRootedPath(Root root, PathFragment rootRelativePath) {
-    if (rootRelativePath.isAbsolute()) {
-      if (root.isAbsolute()) {
-        return new RootedPath(root, rootRelativePath);
-      } else {
+    return toRootedPath(root, rootRelativePath, false);
+  }
+
+  public static RootedPath toRootedPathCorrectCasing(Root root, PathFragment rootRelativePath) {
+    return toRootedPath(root, rootRelativePath, true);
+  }
+
+  private static RootedPath toRootedPath(Root root, PathFragment rootRelativePath,
+      boolean correctCasing) {
+    if (rootRelativePath.isAbsolute() && !root.isAbsolute()) {
         Preconditions.checkArgument(
             root.contains(rootRelativePath),
             "rootRelativePath '%s' is absolute, but it's not under root '%s'",
             rootRelativePath,
             root);
-        return new RootedPath(root, root.relativize(rootRelativePath));
-      }
-    } else {
-      return new RootedPath(root, rootRelativePath);
+      rootRelativePath = root.relativize(rootRelativePath);
     }
+    if (correctCasing) {
+      root = root.correctCasing();
+      // TODO: correctCasing(int startingFrom) --- ha tudjuk, hogy a prefix korrekt
+      Path combined = root.getRelative(rootRelativePath).correctCasing();
+      rootRelativePath = combined.relativeTo(root.asPath());
+    }
+    return new RootedPath(root, rootRelativePath);
   }
 
   /** Returns a rooted path representing {@code path} under the root {@code root}. */
@@ -94,6 +104,10 @@ public class RootedPath implements Serializable {
   /** Returns the path fragment relative to {@code #getRoot}. */
   public PathFragment getRootRelativePath() {
     return rootRelativePath;
+  }
+
+  public RootedPath correctCasing() {
+    return toRootedPathCorrectCasing(root, rootRelativePath);
   }
 
   @Override

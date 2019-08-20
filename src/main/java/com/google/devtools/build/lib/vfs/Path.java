@@ -108,6 +108,10 @@ public class Path
     this.fileSystem = fileSystem;
   }
 
+  public Path correctCasing() {
+    return fileSystem.correctCasing(this);
+  }
+
   public String getPathString() {
     return path;
   }

@@ -282,7 +282,14 @@ public class PackageLookupFunction implements SkyFunction {
       return null;
     }
     if (fileValue.isFile()) {
-      return PackageLookupValue.success(buildFileRootedPath.getRoot(), buildFileName);
+      RootedPath correctCasing = buildFileRootedPath.correctCasing();
+      if (correctCasing.equals(buildFileRootedPath)) {
+        return PackageLookupValue.success(buildFileRootedPath.getRoot(), buildFileName);
+      } else {
+        System.err.printf(" | DEBUG | actual(%s) correct(%s)%n",
+            buildFileRootedPath, correctCasing);
+        return new PackageLookupValue.IncorrectPathCasingValue(buildFileRootedPath, correctCasing);
+      }
     }
 
     return PackageLookupValue.NO_BUILD_FILE_VALUE;
@@ -365,8 +372,15 @@ public class PackageLookupFunction implements SkyFunction {
       }
 
       if (fileValue.isFile()) {
-        return PackageLookupValue.success(
-            repositoryValue, Root.fromPath(repositoryValue.getPath()), buildFileName);
+        RootedPath correctCasing = buildFileRootedPath.correctCasing();
+        if (correctCasing.equals(buildFileRootedPath)) {
+          return PackageLookupValue.success(
+              repositoryValue, Root.fromPath(repositoryValue.getPath()), buildFileName);
+        } else {
+          System.err.printf(" | DEBUG | actual(%s) correct(%s)%n",
+              buildFileRootedPath, correctCasing);
+          return new PackageLookupValue.IncorrectPathCasingValue(buildFileRootedPath, correctCasing);
+        }
       }
     }
 

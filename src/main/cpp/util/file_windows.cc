@@ -527,7 +527,8 @@ string MakeCanonical(const char* path) {
   const WCHAR* p_from = RemoveUncPrefixMaybe(long_realpath.get());
   WCHAR* p_to = lcase_realpath.get();
   while (size-- > 0) {
-    *p_to++ = towlower(*p_from++);
+    //*p_to++ = towlower(*p_from++);
+    *p_to++ = *p_from++;
   }
   *p_to = 0;
   return string(WstringToCstring(lcase_realpath.get()).get());
@@ -694,11 +695,11 @@ bool MakeDirectories(const string& path, unsigned int mode) {
   return MakeDirectoriesW(wpath, mode);
 }
 
-static inline void ToLowerW(WCHAR* p) {
-  while (*p) {
-    *p++ = towlower(*p);
-  }
-}
+//static inline void ToLowerW(WCHAR* p) {
+//  while (*p) {
+//    *p++ = towlower(*p);
+//  }
+//}
 
 std::wstring GetCwdW() {
   static constexpr size_t kBufSmall = MAX_PATH;
@@ -711,7 +712,7 @@ std::wstring GetCwdW() {
   }
 
   if (len < kBufSmall) {
-    ToLowerW(buf);
+    //ToLowerW(buf);
     return std::wstring(buf);
   }
 
@@ -722,7 +723,7 @@ std::wstring GetCwdW() {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
         << "GetCurrentDirectoryW failed (error " << err << ")";
   }
-  ToLowerW(buf_big.get());
+  //ToLowerW(buf_big.get());
   return std::wstring(buf_big.get());
 }
 

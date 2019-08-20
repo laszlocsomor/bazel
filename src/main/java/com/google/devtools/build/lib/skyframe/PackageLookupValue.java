@@ -61,6 +61,8 @@ public abstract class PackageLookupValue implements SkyValue {
     /** The package is considered deleted because of --deleted_packages. */
     DELETED_PACKAGE,
 
+    INCORRECT_CASING,
+
     /** The repository was not found. */
     REPOSITORY_NOT_FOUND
   }
@@ -383,6 +385,27 @@ public abstract class PackageLookupValue implements SkyValue {
     @Override
     public String getErrorMsg() {
       return "Package is considered deleted due to --deleted_packages";
+    }
+  }
+
+  /** TODO */
+  public static class IncorrectPathCasingValue extends UnsuccessfulPackageLookupValue {
+    private RootedPath actual;
+    private RootedPath expected;
+
+    IncorrectPathCasingValue(RootedPath actual, RootedPath expected) {
+      this.actual = actual;
+      this.expected = expected;
+    }
+
+    @Override
+    ErrorReason getErrorReason() {
+      return ErrorReason.INCORRECT_CASING;
+    }
+
+    @Override
+    public String getErrorMsg() {
+      return String.format("TODO [Actual (%s), expected (%s)]", actual.asPath(), expected.asPath());
     }
   }
 

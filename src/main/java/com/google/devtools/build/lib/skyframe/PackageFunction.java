@@ -370,6 +370,7 @@ public class PackageFunction implements SkyFunction {
               new BuildFileNotFoundException(packageId, packageLookupValue.getErrorMsg()),
               Transience.PERSISTENT);
         case INVALID_PACKAGE_NAME:
+        case INCORRECT_CASING:
           throw new PackageFunctionException(new InvalidPackageNameException(packageId,
               packageLookupValue.getErrorMsg()), Transience.PERSISTENT);
         default:

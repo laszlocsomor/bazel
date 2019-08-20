@@ -195,6 +195,18 @@ std::wstring Normalize(const std::wstring& p);
 
 bool GetCwd(std::wstring* result, DWORD* err_code);
 
+// Correct the casing of 'abs_path'.
+// 'abs_path' must be absolute and normalized. It may or may not have an UNC
+// prefix. It may use '/' and '\' directory separators.
+// The result is the case-corrected copy of 'abs_path', up to the last existing
+// segment, then the rest of 'abs_path' is copied into the result unchanged.
+// For example if C:\Foo\Bar exists, then CorrectCasing("c:/FOO/bar") returns
+// "C:\Foo\Bar" and CorrectCasing("c:/foo/bar/BAZ/quX") returns
+// "C:\Foo\Bar\BAZ/quX". If 'with_unc' is true, the result will have an UNC
+// prefix.
+// If 'abs_path' is null or empty or not absolute, the result is empty.
+std::wstring CorrectCasing(const wchar_t* abs_path, bool with_unc);
+
 }  // namespace windows
 }  // namespace bazel
 

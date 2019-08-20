@@ -45,6 +45,16 @@ public class WindowsFileSystem extends JavaIoFileSystem {
   }
 
   @Override
+  public Path correctCasing(Path p) {
+    try {
+      String r = WindowsFileOperations.getCorrectCasing(p.toString());
+      return getPath(r);
+    } catch (IOException e) {
+      return p;
+    }
+  }
+
+  @Override
   public String getFileSystemType(Path path) {
     // TODO(laszlocsomor): implement this properly, i.e. actually query this information from
     // somewhere (java.nio.Filesystem? System.getProperty? implement JNI method and use WinAPI?).

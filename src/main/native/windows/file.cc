@@ -781,5 +781,60 @@ bool GetCwd(std::wstring* result, DWORD* err_code) {
   }
 }
 
+std::wstring CorrectCasing(const wchar_t* abs_path, bool with_unc) {
+  if (!HasDriveSpecifierPrefix(abs_path)) {
+    return L"";
+  }
+  size_t size = wcslen(abs_path);
+  std::unique_ptr<wchar_t[]> result;
+  if (wcsncmp(abs_path, L"\\\\?\\", 4) == 0) {
+    result.reset(new wchar_t[size + 1]);
+    memcpy(result.get(), abs_path, sizeof(wchar_t) * (size + 1));
+  } else {
+    result.reset(new wchar_t[size + 1 + 4]);
+    memcpy(result.get() + 4, abs_path, sizeof(wchar_t) * (size + 1));
+    result[0] = L'\\';
+    result[1] = L'\\';
+    result[2] = L'?';
+    result[3] = L'\\';
+    size += 4;
+  }
+  result[4] = towupper(result[4]);  // make drive letter upper-case
+  result[6] = L'\\';  // in case it was '/'
+  for (size_t start = 7;;)  { // UNC prefix + drive letter + colon + backslash
+    size_t segment_end = start;
+    for (; segment_end < size; ++segment_end) {
+      if (result[segment_end] == L'\\' || result[segment_end] == L'/') {
+        // Pretend the path ends after this segment, and pass it directly to
+        // FindFirstFileW.
+        result[segment_end] = 0;
+        break;
+      }
+    }
+    WIN32_FIND_DATAW metadata;
+    HANDLE handle = FindFirstFileW(result.get(), &metadata);
+    if (handle != INVALID_HANDLE_VALUE) {
+      // Found the child, metadata.cFileName has the correct casing.
+      FindClose(handle);
+      wcscpy(result.get() + start, metadata.cFileName);
+      if (segment_end < size) {
+        // This was not the last path segment.
+        result[segment_end] = L'\\';
+        start = segment_end + 1;
+      } else {
+        // This was the last path segment.
+        break;
+      }
+    } else {
+      // Non-existent (or non-normalized) path, leave the rest of it unchanged.
+      if (segment_end < size) {
+        result[segment_end] = L'\\';
+      }
+      break;
+    }
+  }
+  return result.get() + (with_unc ? 0 : 4);
+}
+
 }  // namespace windows
 }  // namespace bazel

@@ -78,6 +78,8 @@ public abstract class Root implements Comparable<Root>, Serializable {
 
   public abstract boolean isAbsolute();
 
+  public abstract Root correctCasing();
+
   /** Implementation of Root that is backed by a {@link Path}. */
   @AutoCodec
   public static final class PathRoot extends Root {
@@ -135,6 +137,11 @@ public abstract class Root implements Comparable<Root>, Serializable {
     @Override
     public boolean isAbsolute() {
       return false;
+    }
+
+    @Override
+    public Root correctCasing() {
+      return new PathRoot(path.correctCasing());
     }
 
     @Override
@@ -227,6 +234,11 @@ public abstract class Root implements Comparable<Root>, Serializable {
     @Override
     public Path asPath() {
       return null;
+    }
+
+    @Override
+    public Root correctCasing() {
+      return this;
     }
 
     @Override
