@@ -645,7 +645,7 @@ static const void GoToWorkspace(
 
 // Replace this process with the blaze server. Does not exit.
 static void RunServerMode(
-    const string &server_exe, const vector<string> &server_exe_args,
+    const blaze_util::Path &server_exe, const vector<string> &server_exe_args,
     const blaze_util::Path &server_dir, const WorkspaceLayout &workspace_layout,
     const string &workspace, const OptionProcessor &option_processor,
     const StartupOptions &startup_options, BlazeServer *server) {
@@ -677,15 +677,16 @@ static void RunServerMode(
   {
     WithEnvVars env_obj(PrepareEnvironmentForJvm());
     ExecuteServerJvm(server_exe, server_exe_args);
+    string err = GetLastErrorString();
     BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
-        << "execv of '" << server_exe << "' failed: " << GetLastErrorString();
+        << "execv of '" << server_exe.AsPrintablePath() << "' failed: " << err;
   }
 }
 
 // Replace this process with blaze in standalone/batch mode.
 // The batch mode blaze process handles the command and exits.
 static void RunBatchMode(
-    const string &server_exe, const vector<string> &server_exe_args,
+    const blaze_util::Path &server_exe, const vector<string> &server_exe_args,
     const WorkspaceLayout &workspace_layout, const string &workspace,
     const OptionProcessor &option_processor,
     const StartupOptions &startup_options, LoggingInfo *logging_info,
@@ -738,8 +739,9 @@ static void RunBatchMode(
   {
     WithEnvVars env_obj(PrepareEnvironmentForJvm());
     ExecuteServerJvm(server_exe, jvm_args_vector);
+    string err = GetLastErrorString();
     BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
-        << "execv of '" << server_exe << "' failed: " << GetLastErrorString();
+        << "execv of '" << server_exe.AsPrintablePath() << "' failed: " << err;
   }
 }
 
@@ -859,7 +861,7 @@ static void EnsurePreviousServerProcessTerminated(
 
 // Starts up a new server and connects to it. Exits if it didn't work out.
 static void StartServerAndConnect(
-    const string &server_exe, const vector<string> &server_exe_args,
+    const blaze_util::Path &server_exe, const vector<string> &server_exe_args,
     const blaze_util::Path &server_dir, const WorkspaceLayout &workspace_layout,
     const string &workspace, const OptionProcessor &option_processor,
     const StartupOptions &startup_options, LoggingInfo *logging_info,
@@ -1211,7 +1213,7 @@ static void CancelServer() { blaze_server->Cancel(); }
 // server's response back to the user. Does not return - exits via exit or
 // signal.
 static ATTRIBUTE_NORETURN void RunClientServerMode(
-    const string &server_exe, const vector<string> &server_exe_args,
+    const blaze_util::Path &server_exe, const vector<string> &server_exe_args,
     const blaze_util::Path &server_dir, const WorkspaceLayout &workspace_layout,
     const string &workspace, const OptionProcessor &option_processor,
     const StartupOptions &startup_options, LoggingInfo *logging_info,
@@ -1227,7 +1229,8 @@ static ATTRIBUTE_NORETURN void RunClientServerMode(
     // Check for the case when the workspace directory deleted and then gets
     // recreated while the server is running
 
-    string server_cwd = GetProcessCWD(server->ProcessInfo().server_pid_);
+    blaze_util::Path server_cwd =
+        GetProcessCWD(server->ProcessInfo().server_pid_);
     // If server_cwd is empty, GetProcessCWD failed. This notably occurs when
     // running under Docker because then readlink(/proc/[pid]/cwd) returns
     // EPERM.
@@ -1239,14 +1242,14 @@ static ATTRIBUTE_NORETURN void RunClientServerMode(
     // cases, it's better to assume that everything is alright if we can't get
     // the cwd.
 
-    if (!server_cwd.empty() &&
-        (server_cwd != workspace ||                         // changed
-         server_cwd.find(" (deleted)") != string::npos)) {  // deleted.
+    if (!server_cwd.IsEmpty() &&
+        (server_cwd != blaze_util::Path(workspace) || // changed
+         server_cwd.Contains(" (deleted)"))) {  // deleted.
       // There's a distant possibility that the two paths look the same yet are
       // actually different because the two processes have different mount
       // tables.
-      BAZEL_LOG(INFO) << "Server's cwd moved or deleted (" << server_cwd
-                      << ").";
+      BAZEL_LOG(INFO) << "Server's cwd moved or deleted ("
+                      << server_cwd.AsPrintablePath() << ").";
       server->KillRunningServer();
     } else {
       break;
@@ -1512,7 +1515,8 @@ static void RunLauncher(const blaze_util::Path &self_path,
   KillRunningServerIfDifferentStartupOptions(
       startup_options, server_exe_args, logging_info, blaze_server);
 
-  const string server_exe = startup_options.GetExe(jvm_path, server_jar_path);
+  const blaze_util::Path server_exe =
+      startup_options.GetExe(jvm_path, server_jar_path);
 
   const blaze_util::Path server_dir =
       blaze_util::Path(startup_options.output_base).GetRelative("server");
@@ -2045,7 +2049,7 @@ unsigned int BlazeServer::Communicate(
     // Execute the requested program, but before doing so, flush everything
     // we still have to say.
     fflush(NULL);
-    ExecuteRunRequest(request.argv(0), argv);
+    ExecuteRunRequest(blaze_util::Path(request.argv(0)), argv);
   }
 
   // We'll exit with exit code SIGPIPE on Unixes due to PropagateSignalOnExit()

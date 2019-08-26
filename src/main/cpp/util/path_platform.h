@@ -25,9 +25,12 @@ class Path {
  public:
   Path() {}
   explicit Path(const std::string &path);
+  bool operator==(const Path& o) const { return path_ == o.path_; }
+  bool operator!=(const Path& o) const { return path_ != o.path_; }
   bool IsEmpty() const { return path_.empty(); }
   bool IsNull() const;
   bool Contains(const char c) const;
+  bool Contains(const std::string &s) const;
   Path GetRelative(const std::string &r) const;
   Path Canonicalize() const;
   std::string AsPrintablePath() const;
@@ -168,6 +171,8 @@ bool AsAbsoluteWindowsPath(const std::wstring &path, std::wstring *result,
 // Works even for non-existent paths (and non-existent drives), shortening the
 // existing segments and leaving the rest unshortened.
 bool AsShortWindowsPath(const std::string &path, std::string *result,
+                        std::string *error);
+bool AsShortWindowsPath(const std::wstring &path, std::wstring *result,
                         std::string *error);
 
 #else
