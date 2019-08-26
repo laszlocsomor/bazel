@@ -18,11 +18,15 @@
 #include <string>
 #include <vector>
 
+namespace blaze_util {
+class Path;
+}
+
 namespace blaze {
 
 // Determines the contents of the archive, storing the names of the contained
 // files into `files` and the install md5 key into `install_md5`.
-void DetermineArchiveContents(const std::string &archive_path,
+void DetermineArchiveContents(const blaze_util::Path &archive_path,
                               const std::string &product_name,
                               std::vector<std::string> *files,
                               std::string *install_md5);
@@ -30,14 +34,14 @@ void DetermineArchiveContents(const std::string &archive_path,
 // Extracts the embedded data files in `archive_path` into `output_dir`.
 // Fails if `expected_install_md5` doesn't match that contained in the archive,
 // as this could indicate that the contents has unexpectedly changed.
-void ExtractArchiveOrDie(const std::string &archive_path,
+void ExtractArchiveOrDie(const blaze_util::Path &archive_path,
                          const std::string &product_name,
                          const std::string &expected_install_md5,
                          const std::string &output_dir);
 
 // Retrieves the build label (version string) from `archive_path` into
 // `build_label`.
-void ExtractBuildLabel(const std::string &archive_path,
+void ExtractBuildLabel(const blaze_util::Path &archive_path,
                        const std::string &product_name,
                        std::string *build_label);
 

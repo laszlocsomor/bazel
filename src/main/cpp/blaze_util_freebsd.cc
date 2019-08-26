@@ -72,10 +72,12 @@ void WarnFilesystemType(const blaze_util::Path &output_base) {
   }
 }
 
-string GetSelfPath() {
+blaze_util::Path GetSelfPath() {
   char buffer[PATH_MAX] = {};
   auto pid = getpid();
-  if (kill(pid, 0) < 0) return "";
+  if (kill(pid, 0) < 0) {
+    return blaze_util::Path();
+  }
   auto procstat = procstat_open_sysctl();
   unsigned int n;
   auto p = procstat_getprocs(procstat, KERN_PROC_PID, pid, &n);
@@ -93,7 +95,7 @@ string GetSelfPath() {
     procstat_freeprocs(procstat, p);
   }
   procstat_close(procstat);
-  return string(buffer);
+  return blaze_util::Path(buffer);
 }
 
 uint64_t GetMillisecondsMonotonic() {

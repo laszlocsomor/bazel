@@ -191,11 +191,16 @@ class GetBuildLabelFileProcessor
 };
 
 static void RunZipProcessorOrDie(
-    const string &archive_path,
+    const blaze_util::Path &archive_path,
     const string &product_name,
     devtools_ijar::ZipExtractorProcessor *processor) {
+#if defined(_WIN32) || defined(__CYGWIN__)
+  std::string path = blaze_util::WstringToString(archive_path.AsNativePath());
+#else
+  std::string path = archive_path.AsNativePath();
+#endif
   std::unique_ptr<devtools_ijar::ZipExtractor> extractor(
-      devtools_ijar::ZipExtractor::Create(archive_path.c_str(), processor));
+      devtools_ijar::ZipExtractor::Create(path.c_str(), processor));
 
   if (extractor == NULL) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
@@ -210,7 +215,7 @@ static void RunZipProcessorOrDie(
 }
 
 void DetermineArchiveContents(
-    const string &archive_path,
+    const blaze_util::Path &archive_path,
     const string &product_name,
     std::vector<std::string>* files,
     string *install_md5) {
@@ -227,7 +232,7 @@ void DetermineArchiveContents(
   }
 }
 
-void ExtractArchiveOrDie(const string &archive_path,
+void ExtractArchiveOrDie(const blaze_util::Path &archive_path,
                          const string &product_name,
                          const string &expected_install_md5,
                          const string &output_dir) {
@@ -263,7 +268,8 @@ void ExtractArchiveOrDie(const string &archive_path,
 
   if (install_md5 != expected_install_md5) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
-        << "The " << product_name << " binary at " << archive_path
+        << "The " << product_name << " binary at "
+        << archive_path.AsPrintablePath()
         << " was replaced during the client's self-extraction (old md5: "
         << expected_install_md5 << " new md5: " << install_md5
         << "). If you expected this then you should simply re-run "
@@ -273,7 +279,7 @@ void ExtractArchiveOrDie(const string &archive_path,
   }
 }
 
-void ExtractBuildLabel(const string &archive_path,
+void ExtractBuildLabel(const blaze_util::Path &archive_path,
                        const string &product_name,
                        string *build_label) {
   GetBuildLabelFileProcessor processor(build_label);

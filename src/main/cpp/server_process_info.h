@@ -16,8 +16,6 @@
 #define BAZEL_SRC_MAIN_CPP_SERVER_PROCESS_INFO_H_
 
 #include <sys/types.h>
-#include <string>
-#include <vector>
 
 #include "src/main/cpp/util/path.h"
 #include "src/main/cpp/util/port.h"  // pid_t on Windows/MSVC

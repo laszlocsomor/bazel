@@ -963,7 +963,7 @@ static void MoveFiles(const string &embedded_binaries) {
 // it is in place. Concurrency during extraction is handled by
 // extracting in a tmp dir and then renaming it into place where it
 // becomes visible automically at the new path.
-static DurationMillis ExtractData(const string &self_path,
+static DurationMillis ExtractData(const blaze_util::Path &self_path,
                                   const vector<string> &archive_contents,
                                   const string &expected_install_md5,
                                   const StartupOptions &startup_options,
@@ -1458,13 +1458,13 @@ static int GetExitCodeForAbruptExit(const blaze_util::Path &output_base) {
   return custom_exit_code;
 }
 
-void PrintVersionInfo(const string &self_path, const string &product_name) {
+void PrintVersionInfo(const blaze_util::Path &self_path, const string &product_name) {
   string build_label;
   ExtractBuildLabel(self_path, product_name, &build_label);
   printf("%s %s\n", product_name.c_str(), build_label.c_str());
 }
 
-static void RunLauncher(const string &self_path,
+static void RunLauncher(const blaze_util::Path &self_path,
                         const vector<string> &archive_contents,
                         const string &install_md5,
                         const StartupOptions &startup_options,
@@ -1538,7 +1538,7 @@ int Main(int argc, const char *argv[], WorkspaceLayout *workspace_layout,
       new blaze_util::BazelLogHandler());
   blaze_util::SetLogHandler(std::move(default_handler));
 
-  const string self_path = GetSelfPath();
+  const blaze_util::Path self_path = GetSelfPath();
 
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
     PrintVersionInfo(self_path, option_processor->GetLowercaseProductName());

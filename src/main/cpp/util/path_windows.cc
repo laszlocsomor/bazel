@@ -470,6 +470,23 @@ Path::Path(const std::string& path) {
   }
 }
 
+Path Path::FromUnchecked(const std::wstring& path) {
+  if (path.empty()) {
+    return Path();
+  } else if (IsDevNull(path.c_str())) {
+    return Path(L"NUL");
+  } else {
+    std::string error;
+    std::wstring wpath;
+    if (!AsAbsoluteWindowsPath(path, &wpath, &error)) {
+      BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
+          << "Path::FromUnchecked(" << WstringToString(path)
+          << "): AsAbsoluteWindowsPath failed: " << error;
+    }
+    return Path(wpath);
+  }
+}
+
 Path Path::GetRelative(const std::string& r) const {
   if (r.empty()) {
     return *this;

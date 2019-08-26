@@ -124,14 +124,14 @@ void WarnFilesystemType(const blaze_util::Path& output_base) {
   }
 }
 
-string GetSelfPath() {
+blaze_util::Path GetSelfPath() {
   char pathbuf[PROC_PIDPATHINFO_MAXSIZE] = {};
   int len = proc_pidpath(getpid(), pathbuf, sizeof(pathbuf));
   if (len == 0) {
     BAZEL_DIE(blaze_exit_code::INTERNAL_ERROR)
         << "error calling proc_pidpath: " << GetLastErrorString();
   }
-  return string(pathbuf, len);
+  return blaze_util::Path(string(pathbuf, len));
 }
 
 uint64_t GetMillisecondsMonotonic() {

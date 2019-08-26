@@ -107,7 +107,7 @@ std::string GetProcessIdAsString();
 
 // Get an absolute path to the binary being executed that is guaranteed to be
 // readable.
-std::string GetSelfPath();
+blaze_util::Path GetSelfPath();
 
 // Returns the directory Bazel can use to store output.
 std::string GetOutputRoot();

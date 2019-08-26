@@ -60,10 +60,6 @@ namespace blaze {
 static_assert(sizeof(wchar_t) == sizeof(WCHAR),
               "wchar_t and WCHAR should be the same size");
 
-// When using widechar Win32 API functions the maximum path length is 32K.
-// Add 4 characters for potential UNC prefix and a couple more for safety.
-static const size_t kWindowsPathBufferSize = 0x8010;
-
 using bazel::windows::AutoAttributeList;
 using bazel::windows::AutoHandle;
 using bazel::windows::CreateJunction;
@@ -384,13 +380,14 @@ string GetProcessIdAsString() {
   return ToString(GetCurrentProcessId());
 }
 
-string GetSelfPath() {
-  WCHAR buffer[kWindowsPathBufferSize] = {0};
-  if (!GetModuleFileNameW(0, buffer, kWindowsPathBufferSize)) {
+blaze_util::Path GetSelfPath() {
+  static constexpr DWORD kBufSize = 0x8000;
+  WCHAR buffer[kBufSize] = {0};
+  if (!GetModuleFileNameW(0, buffer, kBufSize)) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
         << "GetSelfPath: GetModuleFileNameW: " << GetLastErrorString();
   }
-  return string(blaze_util::WstringToCstring(buffer).get());
+  return blaze_util::Path::FromUnchecked(buffer);
 }
 
 string GetOutputRoot() {

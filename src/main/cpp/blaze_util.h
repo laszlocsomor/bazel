@@ -26,7 +26,9 @@
 #include <string>
 #include <vector>
 
-#include "src/main/cpp/util/path.h"
+namespace blaze_util {
+class Path;
+}
 
 namespace blaze {
 

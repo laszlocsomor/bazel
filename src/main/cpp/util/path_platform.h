@@ -35,6 +35,7 @@ class Path {
   std::string AsCommandLineArgument() const;
 
 #if defined(_WIN32) || defined(__CYGWIN__)
+  static Path FromUnchecked(const std::wstring& p);
   const std::wstring AsNativePath() const { return path_; }
 #else
   const std::string AsNativePath() const { return path_; }

@@ -82,11 +82,11 @@ void WarnFilesystemType(const blaze_util::Path& output_base) {
   }
 }
 
-string GetSelfPath() {
+blaze_util::Path GetSelfPath() {
   // The file to which this symlink points could change contents or go missing
   // concurrent with execution of the Bazel client, so we don't eagerly resolve
   // it.
-  return "/proc/self/exe";
+  return blaze_util::Path("/proc/self/exe");
 }
 
 uint64_t GetMillisecondsMonotonic() {
