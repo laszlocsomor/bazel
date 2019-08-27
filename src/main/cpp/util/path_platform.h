@@ -33,6 +33,7 @@ class Path {
   bool Contains(const std::string &s) const;
   Path GetRelative(const std::string &r) const;
   Path Canonicalize() const;
+  Path GetParent() const;
   std::string AsPrintablePath() const;
   std::string AsJvmArgument() const;
   std::string AsCommandLineArgument() const;

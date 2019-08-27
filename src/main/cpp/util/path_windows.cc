@@ -524,6 +524,10 @@ Path Path::Canonicalize() const {
   return Path(MakeCanonical(WstringToString(path_).c_str()));
 }
 
+Path Path::GetParent() const {
+  return Path(SplitPathW(path_).first);
+}
+
 bool Path::IsNull() const { return path_ == L"NUL"; }
 
 bool Path::Contains(const char c) const {
