@@ -81,7 +81,8 @@ class WindowsDumper : public Dumper {
  public:
   static WindowsDumper* Create(string* error);
   ~WindowsDumper() { Finish(nullptr); }
-  void Dump(const void* data, const size_t size, const string& path) override;
+  void Dump(const void* data, const size_t size, const blaze_util::Path& path)
+      override;
   bool Finish(string* error) override;
 
  private:
@@ -92,7 +93,7 @@ class WindowsDumper : public Dumper {
   TP_CALLBACK_ENVIRON threadpool_env_;
 
   std::mutex dir_cache_lock_;
-  std::set<string> dir_cache_;
+  std::set<blaze_util::Path> dir_cache_;
 
   std::mutex error_lock_;
   string error_msg_;
@@ -102,8 +103,9 @@ namespace {
 
 class DumpContext {
  public:
-  DumpContext(unique_ptr<uint8_t[]> data, const size_t size, const string path,
-              std::mutex* dir_cache_lock, std::set<string>* dir_cache,
+  DumpContext(unique_ptr<uint8_t[]> data, const size_t size,
+              const blaze_util::Path& path,
+              std::mutex* dir_cache_lock, std::set<blaze_util::Path>* dir_cache,
               std::mutex* error_lock_, string* error_msg);
   void Run();
 
@@ -112,10 +114,10 @@ class DumpContext {
 
   unique_ptr<uint8_t[]> data_;
   const size_t size_;
-  const string path_;
+  const blaze_util::Path path_;
 
   std::mutex* dir_cache_lock_;
-  std::set<string>* dir_cache_;
+  std::set<blaze_util::Path>* dir_cache_;
 
   std::mutex* error_lock_;
   string* error_msg_;
@@ -166,7 +168,7 @@ WindowsDumper* WindowsDumper::Create(string* error) {
 }
 
 void WindowsDumper::Dump(const void* data, const size_t size,
-                         const string& path) {
+                         const blaze_util::Path& path) {
   {
     std::lock_guard<std::mutex> g(error_lock_);
     if (!error_msg_.empty()) {
@@ -212,8 +214,8 @@ bool WindowsDumper::Finish(string* error) {
 namespace {
 
 DumpContext::DumpContext(unique_ptr<uint8_t[]> data, const size_t size,
-                         const string path, std::mutex* dir_cache_lock,
-                         std::set<string>* dir_cache, std::mutex* error_lock_,
+                         const blaze_util::Path& path, std::mutex* dir_cache_lock,
+                         std::set<blaze_util::Path>* dir_cache, std::mutex* error_lock_,
                          string* error_msg)
     : data_(std::move(data)),
       size_(size),
@@ -223,7 +225,7 @@ DumpContext::DumpContext(unique_ptr<uint8_t[]> data, const size_t size,
       error_msg_(error_msg) {}
 
 void DumpContext::Run() {
-  string dirname = blaze_util::Dirname(path_);
+  blaze_util::Path dirname = path_.GetParent();
 
   bool success = true;
   // Performance optimization: memoize the paths we already created a
@@ -238,12 +240,12 @@ void DumpContext::Run() {
   }
 
   if (!success) {
-    MaybeSignalError(string("Couldn't create directory '") + dirname + "'");
+    MaybeSignalError(string("Couldn't create directory '") + dirname.AsPrintablePath() + "'");
     return;
   }
 
   if (!blaze_util::WriteFile(data_.get(), size_, path_, 0755)) {
-    MaybeSignalError(string("Failed to write zipped file '") + path_ + "'");
+    MaybeSignalError(string("Failed to write zipped file '") + path_.AsPrintablePath() + "'");
   }
 }
 

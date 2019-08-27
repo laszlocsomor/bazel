@@ -37,7 +37,7 @@ void DetermineArchiveContents(const blaze_util::Path &archive_path,
 void ExtractArchiveOrDie(const blaze_util::Path &archive_path,
                          const std::string &product_name,
                          const std::string &expected_install_md5,
-                         const std::string &output_dir);
+                         const blaze_util::Path &output_dir);
 
 // Retrieves the build label (version string) from `archive_path` into
 // `build_label`.

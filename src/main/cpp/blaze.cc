@@ -909,9 +909,7 @@ static void StartServerAndConnect(
   delete server_startup;
 }
 
-static void MoveFiles(const string &embedded_binaries) {
-  blaze_util::Path embedded_binaries_(embedded_binaries);
-
+static void MoveFiles(const blaze_util::Path &embedded_binaries) {
   // Set the timestamps of the extracted files to the future and make sure (or
   // at least as sure as we can...) that the files we have written are actually
   // on the disk.
@@ -949,7 +947,7 @@ static void MoveFiles(const string &embedded_binaries) {
     // conditions are not strictly needed, but it makes this loop more robust,
     // because otherwise, if due to some glitch, directory was not under
     // embedded_binaries, it would get into an infinite loop.
-    while (directory != embedded_binaries_ &&
+    while (directory != embedded_binaries &&
            synced_directories.count(directory) == 0 && !directory.IsEmpty() &&
            !blaze_util::IsRootDirectory(directory)) {
       blaze_util::SyncFile(directory);
@@ -958,7 +956,7 @@ static void MoveFiles(const string &embedded_binaries) {
     }
   }
 
-  blaze_util::SyncFile(embedded_binaries_);
+  blaze_util::SyncFile(embedded_binaries);
 }
 
 
@@ -979,7 +977,8 @@ static DurationMillis ExtractData(const blaze_util::Path &self_path,
     // Work in a temp dir to avoid races.
     string tmp_install = startup_options.install_base + ".tmp." +
                          blaze::GetProcessIdAsString();
-    string tmp_binaries = GetEmbeddedBinariesRoot(tmp_install);
+    blaze_util::Path tmp_binaries =
+        blaze_util::Path(GetEmbeddedBinariesRoot(tmp_install));
     ExtractArchiveOrDie(
         self_path,
         startup_options.product_name,
