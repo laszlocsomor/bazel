@@ -127,8 +127,8 @@ blaze_util::Path GetProcessCWD(int pid) {
   return blaze_util::Path(string(server_cwd));
 }
 
-bool IsSharedLibrary(const string &filename) {
-  return blaze_util::ends_with(filename, ".so");
+bool IsSharedLibrary(const blaze_util::PathFragment &filename) {
+  return blaze_util::ends_with(filename.GetBaseName(), ".so");
 }
 
 static string Which(const string &executable) {

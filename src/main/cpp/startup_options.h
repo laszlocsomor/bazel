@@ -85,7 +85,7 @@ class StartupOptions {
   // Returns the executable used to start the Blaze server, typically the given
   // JVM.
   virtual blaze_util::Path GetExe(const blaze_util::Path &jvm,
-                                  const std::string &jar_path) const;
+                                  const blaze_util::PathFragment &jar_path) const;
 
   // Adds JVM prefix flags to be set. These will be added before all other
   // JVM flags.
@@ -95,7 +95,7 @@ class StartupOptions {
   // Adds JVM suffix flags. These will be added after all other JVM flags, and
   // just before the Blaze server startup flags.
   virtual void AddJVMArgumentSuffix(const blaze_util::Path &real_install_dir,
-                                    const std::string &jar_path,
+                                    const blaze_util::PathFragment &jar_path,
                                     std::vector<std::string> *result) const;
 
   // Adds JVM tuning flags for Blaze.

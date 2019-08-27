@@ -20,6 +20,7 @@
 
 namespace blaze_util {
 class Path;
+class PathFragment;
 }
 
 namespace blaze {
@@ -28,7 +29,7 @@ namespace blaze {
 // files into `files` and the install md5 key into `install_md5`.
 void DetermineArchiveContents(const blaze_util::Path &archive_path,
                               const std::string &product_name,
-                              std::vector<std::string> *files,
+                              std::vector<blaze_util::PathFragment> *files,
                               std::string *install_md5);
 
 // Extracts the embedded data files in `archive_path` into `output_dir`.
@@ -46,7 +47,8 @@ void ExtractBuildLabel(const blaze_util::Path &archive_path,
                        std::string *build_label);
 
 // Returns the server jar path from the archive contents.
-std::string GetServerJarPath(const std::vector<std::string> &archive_contents);
+blaze_util::PathFragment GetServerJarPath(
+    const std::vector<blaze_util::PathFragment> &archive_contents);
 
 }  // namespace blaze
 

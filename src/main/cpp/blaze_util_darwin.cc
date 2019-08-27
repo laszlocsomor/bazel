@@ -160,8 +160,8 @@ blaze_util::Path GetProcessCWD(int pid) {
   return blaze_util::Path(string(info.pvi_cdir.vip_path));
 }
 
-bool IsSharedLibrary(const string &filename) {
-  return blaze_util::ends_with(filename, ".dylib");
+bool IsSharedLibrary(const blaze_util::PathFragment &filename) {
+  return blaze_util::ends_with(filename.GetBaseName(), ".dylib");
 }
 
 string GetSystemJavabase() {

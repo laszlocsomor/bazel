@@ -131,7 +131,7 @@ void SetScheduling(bool batch_cpu_scheduling, int io_nice_level);
 // Returns the cwd for a process.
 blaze_util::Path GetProcessCWD(int pid);
 
-bool IsSharedLibrary(const std::string& filename);
+bool IsSharedLibrary(const blaze_util::PathFragment& filename);
 
 // Returns the absolute path to the user's local JDK install, to be used as
 // the default target javabase and as a fall-back host_javabase. This is not

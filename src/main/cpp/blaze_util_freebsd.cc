@@ -140,8 +140,8 @@ blaze_util::Path GetProcessCWD(int pid) {
   return blaze_util::Path(cwd);
 }
 
-bool IsSharedLibrary(const string &filename) {
-  return blaze_util::ends_with(filename, ".so");
+bool IsSharedLibrary(const blaze_util::PathFragment &filename) {
+  return blaze_util::ends_with(filename.GetBaseName(), ".so");
 }
 
 string GetSystemJavabase() {

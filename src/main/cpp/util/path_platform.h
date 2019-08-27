@@ -18,6 +18,8 @@
 
 namespace blaze_util {
 
+class PathFragment;
+
 // Platform-native, absolute, normalized path.
 // It can be converted to a printable path (for error messages) or to a native
 // path (for API calls).
@@ -33,6 +35,7 @@ class Path {
   bool Contains(const char c) const;
   bool Contains(const std::string &s) const;
   Path GetRelative(const std::string &r) const;
+  Path GetRelative(const PathFragment &r) const;
   Path Canonicalize() const;
   Path GetParent() const;
   std::string AsPrintablePath() const;
@@ -54,6 +57,29 @@ class Path {
 #else
   std::string path_;
 #endif
+};
+
+// Opaque platform-native path fragment, relative or absolute, and normalized.
+// It can not be converted to a native path, and must combined with a Path
+// first to use in API calls.
+// It can be converted to a printable path for sake of error reporting.
+class PathFragment {
+ public:
+  PathFragment() {}
+  explicit PathFragment(const std::string &path);
+
+  std::string GetBaseName() const;
+  PathFragment GetParent() const;
+  std::string AsPrintablePath() const;
+
+ private:
+#if defined(_WIN32) || defined(__CYGWIN__)
+  explicit PathFragment(const std::wstring &wpath) : path_(wpath) {}
+  std::wstring path_;
+#else
+  std::string path_;
+#endif
+  friend Path Path::GetRelative(const PathFragment&) const;
 };
 
 // Convert a path from Bazel internal form to underlying OS form.

@@ -111,7 +111,7 @@ class GetInstallKeyFileProcessor : public PureZipExtractorProcessor {
 // the Blaze binary to the given vector.
 class NoteAllFilesZipProcessor : public PureZipExtractorProcessor {
  public:
-  explicit NoteAllFilesZipProcessor(std::vector<std::string>* files)
+  explicit NoteAllFilesZipProcessor(std::vector<blaze_util::PathFragment>* files)
       : files_(files) {}
 
   bool AcceptPure(const char *filename,
@@ -121,7 +121,7 @@ class NoteAllFilesZipProcessor : public PureZipExtractorProcessor {
 
   bool Accept(const char *filename,
               const devtools_ijar::u4 attr) override {
-    files_->push_back(filename);
+    files_->push_back(blaze_util::PathFragment(filename));
     return false;
   }
 
@@ -134,7 +134,7 @@ class NoteAllFilesZipProcessor : public PureZipExtractorProcessor {
   }
 
  private:
-  std::vector<std::string>* files_;
+  std::vector<blaze_util::PathFragment>* files_;
 };
 
 // A PureZipExtractorProcessor to extract the files from the blaze zip.
@@ -217,7 +217,7 @@ static void RunZipProcessorOrDie(
 void DetermineArchiveContents(
     const blaze_util::Path &archive_path,
     const string &product_name,
-    std::vector<std::string>* files,
+    std::vector<blaze_util::PathFragment>* files,
     string *install_md5) {
   NoteAllFilesZipProcessor note_all_files_processor(files);
   GetInstallKeyFileProcessor install_key_processor(install_md5);
@@ -293,8 +293,8 @@ void ExtractBuildLabel(const blaze_util::Path &archive_path,
   }
 }
 
-std::string GetServerJarPath(
-    const std::vector<std::string> &archive_contents) {
+blaze_util::PathFragment GetServerJarPath(
+    const std::vector<blaze_util::PathFragment> &archive_contents) {
   if (archive_contents.empty()) {
     BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
         << "Couldn't find server jar in archive";

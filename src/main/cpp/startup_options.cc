@@ -557,7 +557,7 @@ blaze_exit_code::ExitCode StartupOptions::SanityCheckJavabase(
 }
 
 blaze_util::Path StartupOptions::GetExe(const blaze_util::Path &jvm,
-                                        const string &jar_path) const {
+                                        const blaze_util::PathFragment &jar_path) const {
   return jvm;
 }
 
@@ -566,7 +566,8 @@ void StartupOptions::AddJVMArgumentPrefix(const blaze_util::Path &javabase,
 }
 
 void StartupOptions::AddJVMArgumentSuffix(
-    const blaze_util::Path &real_install_dir, const string &jar_path,
+    const blaze_util::Path &real_install_dir,
+    const blaze_util::PathFragment &jar_path,
     std::vector<string> *result) const {
   result->push_back("-jar");
   result->push_back(real_install_dir.GetRelative(jar_path).AsJvmArgument());

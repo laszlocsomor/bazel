@@ -352,8 +352,8 @@ string GetEmbeddedBinariesRoot(const string &install_base) {
 // Returns the JVM command argument array.
 static vector<string> GetServerExeArgs(
     const blaze_util::Path &jvm_path,
-    const string &server_jar_path,
-    const vector<string> &archive_contents,
+    const blaze_util::PathFragment &server_jar_path,
+    const vector<blaze_util::PathFragment> &archive_contents,
     const string &install_md5,
     const WorkspaceLayout &workspace_layout,
     const string &workspace,
@@ -409,7 +409,7 @@ static vector<string> GetServerExeArgs(
   for (const auto &it : archive_contents) {
     if (IsSharedLibrary(it)) {
       string libpath(
-          real_install_dir.GetRelative(blaze_util::Dirname(it)).AsJvmArgument());
+          real_install_dir.GetRelative(it.GetParent()).AsJvmArgument());
       // Only add the library path if it's not added yet.
       if (java_library_paths.find(libpath) == java_library_paths.end()) {
         java_library_paths.insert(libpath);
@@ -967,7 +967,7 @@ static void MoveFiles(const blaze_util::Path &embedded_binaries) {
 // extracting in a tmp dir and then renaming it into place where it
 // becomes visible automically at the new path.
 static DurationMillis ExtractData(const blaze_util::Path &self_path,
-                                  const vector<string> &archive_contents,
+                                  const vector<blaze_util::PathFragment> &archive_contents,
                                   const string &expected_install_md5,
                                   const StartupOptions &startup_options,
                                   LoggingInfo *logging_info) {
@@ -1471,7 +1471,7 @@ void PrintVersionInfo(const blaze_util::Path &self_path, const string &product_n
 }
 
 static void RunLauncher(const blaze_util::Path &self_path,
-                        const vector<string> &archive_contents,
+                        const vector<blaze_util::PathFragment> &archive_contents,
                         const string &install_md5,
                         const StartupOptions &startup_options,
                         const OptionProcessor &option_processor,
@@ -1505,7 +1505,8 @@ static void RunLauncher(const blaze_util::Path &self_path,
   EnsureCorrectRunningVersion(startup_options, logging_info, blaze_server);
 
   const blaze_util::Path jvm_path = startup_options.GetJvm();
-  const string server_jar_path = GetServerJarPath(archive_contents);
+  const blaze_util::PathFragment server_jar_path =
+      GetServerJarPath(archive_contents);
   const vector<string> server_exe_args = GetServerExeArgs(
       jvm_path,
       server_jar_path,
@@ -1600,7 +1601,7 @@ int Main(int argc, const char *argv[], WorkspaceLayout *workspace_layout,
     startup_options->batch = true;
   }
 
-  vector<string> archive_contents;
+  vector<blaze_util::PathFragment> archive_contents;
   string install_md5;
   DetermineArchiveContents(
       self_path,

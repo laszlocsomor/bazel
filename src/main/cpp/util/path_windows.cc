@@ -526,12 +526,22 @@ Path Path::GetRelative(const std::wstring &r) const {
   }
 }
 
+Path Path::GetRelative(const PathFragment &r) const {
+  // TODO(laszlocsomor): optimize this, we know r.path_ is a normalized
+  // Windows-style path, no need to go through the whole conversion again.
+  return GetRelative(r.path_);
+}
+
 Path Path::Canonicalize() const {
   return Path(MakeCanonical(WstringToString(path_).c_str()));
 }
 
 Path Path::GetParent() const {
-  return Path(SplitPathW(path_).first);
+  if (IsRootOrAbsolute(path_, true)) {
+    return Path();
+  } else {
+    return Path(SplitPathW(path_).first);
+  }
 }
 
 bool Path::IsNull() const { return path_ == L"NUL"; }
@@ -553,5 +563,36 @@ std::string Path::AsJvmArgument() const {
 }
 
 std::string Path::AsCommandLineArgument() const { return AsPrintablePath(); }
+
+PathFragment::PathFragment(const std::string &path) {
+  if (path.empty()) {
+    return;
+  } else if (IsDevNull(path.c_str())) {
+    path_ = L"NUL";
+  } else {
+    std::string error;
+    if (!AsWindowsPath(path, &path_, &error)) {
+      BAZEL_DIE(blaze_exit_code::LOCAL_ENVIRONMENTAL_ERROR)
+          << "PathFragment::PathFragment(" << path
+          << "): AsWindowsPath failed: " << error;
+    }
+  }
+}
+
+std::string PathFragment::GetBaseName() const {
+  return WstringToString(SplitPathW(path_).second);
+}
+
+PathFragment PathFragment::GetParent() const {
+  if (IsRootOrAbsolute(path_, true)) {
+    return PathFragment();
+  } else {
+    return PathFragment(SplitPathW(path_).first);
+  }
+}
+
+std::string PathFragment::AsPrintablePath() const {
+  return WstringToCstring(RemoveUncPrefixMaybe(path_.c_str())).get();
+}
 
 }  // namespace blaze_util
