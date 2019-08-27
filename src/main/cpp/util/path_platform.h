@@ -41,6 +41,7 @@ class Path {
 
 #if defined(_WIN32) || defined(__CYGWIN__)
   static Path FromUnchecked(const std::wstring& p);
+  Path GetRelative(const std::wstring &r) const;
   const std::wstring AsNativePath() const { return path_; }
 #else
   const std::string AsNativePath() const { return path_; }

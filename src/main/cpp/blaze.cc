@@ -916,16 +916,15 @@ static void MoveFiles(const string &embedded_binaries) {
   // at least as sure as we can...) that the files we have written are actually
   // on the disk.
 
-  vector<string> extracted_files;
+  vector<blaze_util::Path> extracted_files;
 
   // Walks the temporary directory recursively and collects full file paths.
-  blaze_util::GetAllFilesUnder(embedded_binaries, &extracted_files);
+  blaze_util::GetAllFilesUnder(blaze_util::Path(embedded_binaries),
+                               &extracted_files);
 
   std::unique_ptr<blaze_util::IFileMtime> mtime(blaze_util::CreateFileMtime());
   set<blaze_util::Path> synced_directories;
-  for (const auto &f : extracted_files) {
-    blaze_util::Path it(f);
-
+  for (const auto &it : extracted_files) {
     // Set the time to a distantly futuristic value so we can observe tampering.
     // Note that keeping a static, deterministic timestamp, such as the default
     // timestamp set by unzip (1970-01-01) and using that to detect tampering is
