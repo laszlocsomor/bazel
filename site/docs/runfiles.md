@@ -13,8 +13,9 @@ Runfiles are always read-only.
 
 During the build, Bazel creates symlinks in the output directory that point
 to the actual files. When executed, the binary can access the files via these
-symlinks. You should declare all runfiles that a rule needs, otherwise Bazel
-won't know about them and won't stage them in sandboxes and remote executors.
+symlinks. You should declare all runfiles that a binary needs, otherwise
+Bazel won't know about them and won't stage them in sandboxes and remote
+executors.
 
 ## Example
 
@@ -158,19 +159,21 @@ Config file contents:
 
 ## Under the hood
 
-When building a rule with runfiles, Bazel first writes a file listing the
-symlink names and symlink targets (the "Runfiles manifest"), then creates a
-directory tree with those symlinks (the "Runfiles directory" or "Runfiles
-tree").
+When building a rule with runfiles, Bazel first writes a file that lists the
+symlink names and targets -- this is the "Runfiles manifest". Then Bazel
+creates a directory tree with those symlinks -- the "Runfiles directory",
+"Runfiles tree", or "Symlink tree". The root of the directory tree is called
+the "Runfiles root".
 
 ### Runfiles tree
 
-The runfiles tree is rooted at `<rule_name>.runfiles/` under `bazel-bin/`. In
-our example above, the runfiles tree of `//src/main/java/com/example:main` is
-rooted at `bazel-bin/src/main/java/com/example/main.runfiles`.
+The runfiles tree is rooted at the runfiles root: the `<rule_name>.runfiles/`
+directory under `bazel-bin/`. In our example above, the runfiles root of
+`//src/main/java/com/example:main` is
+`bazel-bin/src/main/java/com/example/main.runfiles`.
 
 The runfiles root has subdirectories for each workspace where the binary's
-runfiles come from. The main workspace is called "runfiles_example1", so
+runfiles originate. The main workspace is called "runfiles_example1", so
 there's a directory for that. The `java_binary` implicitly data-depends on
 files in the `@local_jdk` workspace, so there's also a directory for that.
 
@@ -182,8 +185,8 @@ workspace-relative path of the file. For generated files it's the same as the
 ### Runfiles manifest
 
 The runfiles manifest is a text file. It has two copies, one next to the
-runfiles tree called `<rule_name>.runfiles_manifest`, and one under the
-runfiles tree called `MANIFEST`.
+runfiles root called `<rule_name>.runfiles_manifest`, and one under the
+runfiles root called `MANIFEST`.
 
 This file descibes the layout of the runfiles tree. Each line contains two
 paths separated by space: a relative symlink path (called the "runfiles
