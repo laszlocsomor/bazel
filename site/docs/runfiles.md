@@ -6,16 +6,17 @@ title: Runfiles
 # Runfiles
 
 Runfiles are run-time file dependencies of a rule, typically of a binary- or
-test rule. Also known as "data-dependencies", they are frequently used to
-tell Bazel about files a binary needs while running, such as configuration
-files, static assets, generated assets, or input files to operate on.
-Runfiles are always read-only.
+test rule. Also known as "data-dependencies", they are frequently used for
+telling Bazel what files a binary needs while running, such as configuration
+files, static assets, generated assets, or input files to process. Runfiles
+are always read-only.
 
-During the build, Bazel creates symlinks in the output directory that point
-to the actual files. When executed, the binary can access the files via these
-symlinks. You should declare all runfiles that a binary needs, otherwise
-Bazel won't know about them and won't stage them in sandboxes and remote
-executors.
+Bazel creates symlinks in the output directory during the build, pointing to
+the actual files. When you run the binary it can read the files through the
+symlinks.
+
+You need to declare all runfiles that a binary needs, otherwise Bazel won't
+know about them, and won't stage them in sandboxes and remote executors.
 
 ## Example
 
@@ -23,7 +24,7 @@ Our program `//src/main/java/com/example:main` needs its configuration file
 `//config:flags.txt` at runtime.
 
 (This example works on Linux with sandboxing. Some things are different on
-other platforms and other execution modes. More about that below.)
+other platforms and other execution modes. More about that later.)
 
 ### Input files
 
@@ -76,7 +77,7 @@ java_binary(
 )
 ```
 
-`cat src/main/java/com/example/Main.java`:
+`src/main/java/com/example/Main.java`:
 
 ```java
 package com.example;
@@ -159,38 +160,153 @@ Config file contents:
 
 ## Under the hood
 
-When building a rule with runfiles, Bazel first writes a file that lists the
-symlink names and targets -- this is the "Runfiles manifest". Then Bazel
-creates a directory tree with those symlinks -- the "Runfiles directory",
-"Runfiles tree", or "Symlink tree". The root of the directory tree is called
-the "Runfiles root".
+To build a rule that has runfiles, Bazel first writes a text file that lists
+the symlink names and targets -- the _runfiles manifest_. Bazel then creates
+a directory tree with those symlinks -- the _runfiles tree_ or
+_symlink tree_.
 
 ### Runfiles tree
 
-The runfiles tree is rooted at the runfiles root: the `<rule_name>.runfiles/`
-directory under `bazel-bin/`. In our example above, the runfiles root of
-`//src/main/java/com/example:main` is
-`bazel-bin/src/main/java/com/example/main.runfiles`.
+The _runfiles tree_ is a tree of symlinks that point to the actual runfiles.
 
-The runfiles root has subdirectories for each workspace where the binary's
-runfiles originate. The main workspace is called "runfiles_example1", so
-there's a directory for that. The `java_binary` implicitly data-depends on
-files in the `@local_jdk` workspace, so there's also a directory for that.
+The tree's root directory is the _runfiles root_. Its name is always
+`<rule_name>.runfiles/` and it's usually (see below for clarification) under
+`bazel-bin/<package-name>/` next to the rule's main output. In our previous
+example the runfiles root of `//src/main/java/com/example:main` is
+`bazel-bin/src/main/java/com/example/main.runfiles/`.
+
+For each workspace that the binary has runfiles from, the runfiles root has a
+subdirectory. The main workspace is called "runfiles_example1", so there's a
+directory for that. The `java_binary` rule implicitly data-depends on files
+in the `@local_jdk` workspace, so there's also a directory for that.
 
 Under those directories are the symlinks. Each symlink's path corresponds to
 the file it points to. For source files it's the same as the
 workspace-relative path of the file. For generated files it's the same as the
 `bazel-out/<config-hash>/`-relative path, without the `bazel-out/.../` part.
 
+#### Where is the runfiles tree
+
+The runfiles tree is usually next to the binary. That was the case in our example.
+
+But you can disable building a runfiles tree with `--noenable_runfiles`. This
+makes sense when a runfiles tree is large and building it takes long. Bazel
+will create an empty runfiles tree in this case: just the runfiles root
+directory and a `MANIFEST` file in it.
+
+Another case is when the binary ("inner") is the runfile of another binary
+("outer"). In this case Bazel merges the inner binary's runfiles tree with
+the outermost binary's, as if all runfiles were declared for the outermost
+binary. (Bazel does this to avoid duplicate work: if the two binaries share
+most of the same runfiles, then building a common runfiles tree is more
+efficient than building a tree for each.)
+
 ### Runfiles manifest
 
-The runfiles manifest is a text file. It has two copies, one next to the
-runfiles root called `<rule_name>.runfiles_manifest`, and one under the
-runfiles root called `MANIFEST`.
+The _runfiles manifest_ is a text file that describes the layout of the
+_runfiles tree_.
 
-This file descibes the layout of the runfiles tree. Each line contains two
-paths separated by space: a relative symlink path (called the "runfiles
-path") and an absolute symlink target path.
+It is encoded as ISO 8859-1, and each line contains two paths: a relative
+symlink path (the _runfile path_) and an absolute path that is the symlink's
+target, i.e. the actual runfile. The paths are separated by space.
+
+#### Where is the runfiles manifest
+
+Like the runfiles tree, the runfiles manifest is typically next to the
+binary. It has two copies, one next to the runfiles root called
+`<rule_name>.runfiles_manifest`, and one under the runfiles root called
+`MANIFEST`.
+
+You can disable building a runfiles manifest with
+`--noenable_runfile_manifests`. Note that this also disables building a
+runfiles tree: not even a runfiles root directory will be created.
+
+And again, if a binary is a runfile of another binary, then Bazel creates no
+runfiles manifest for it, instead the content is merged into the outermost
+binary's runfiles manifest.
+
+## Accessing runfiles
+
+### Runfile paths
+
+The _runfile path_ is the relative path of a runfile symlink under the
+runfiles root.
+
+In our previous example the runfile path of
+`@runfiles_example1//config:flags.txt` is
+`runfiles_example1/config/flags.txt`. As this example suggests, you can
+derive this path from the target's label:
+`<workspace name>/<package path>/<target name>`. You refer to a runfile by
+its runfile path.
+
+To access a runfile, the binary also needs to know where's the runfiles root.
+If it doesn't know or if the user disabled generating a runfiles tree, then
+the binary needs to know where's the runfiles manifest and look up the path
+in that. If the user disabled both, then the binary cannot use its runfiles.
+
+### `bazel test`
+
+When you `bazel test` a test target, Bazel sets the working directory to the
+runfiles root.
+
+Bazel also exports this path as the `RUNFILES_DIR` environment variable, and
+the runfiles manifest's path as `RUNFILES_MANIFEST_FILE`.
+
+You can access runfiles by their runfile path, relative to the current
+directory or to `${RUNFILES_DIR}`, or you can look up their path in the
+`${RUNFILES_MANIFEST_FILE}`.
+
+Note that if you disable building the runfiles tree and/or the runfiles
+manifest, then Bazel won't export these variables.
+
+### `bazel run`
+
+If you `bazel run` a target then Bazel sets its working directory to the
+runfiles root. However, Bazel doesn't export the RUNFILES_\* environment
+variables.
+
+### Direct execution from `bazel-bin/`
+
+If you build a target and run it from `bazel-bin/`, then its working
+directory will be the current directory from the terminal. The program needs
+to find its runfiles root on its own.
+
+The program in this case may mean a _launcher_ or the actual binary.
+
+#### Launchers
+
+For some rule types Bazel builds a _launcher_. For example the main output of
+a `java_binary` is a Bash script (on Linux, macOS) or `.exe` file (on
+Windows) whose job is to set up the environment, compute the classpath, and
+launch the JVM.
+
+For some rule types Bazel builds a launcher on one platform but not on
+others. For example `sh_binary` has no launcher on Linux and macOS; its main
+output is a symlink to the main script file. But on Windows it creates a
+`.exe` file whose job is to find the Bash binary and run the main shell
+script with it.
+
+Finally, for some rule types Bazel builds no launcher at all. For example
+`cc_binary` targets' output is just the binary.
+
+#### Runfiles discovery
+
+If there's a launcher, it can try to find the runfiles root and export its
+path as an environment variable and/or set it as the working directory.
+
+If there's no launcher, then the main program needs to do the same. If the
+runfiles tree is next to the binary, it's enough to know
+`argv[0]`. But when the binary is a runfile of another binary, then it's the
+outer binary's responsibility to tell the inner binary where the runfiles
+are.
+
+How the two binaries communicate this is up to them. Typically the outer
+binary exports the `RUNFILES_DIR` and/or `RUNFILES_MANIFEST_FILE` environment
+variables, and the inner binary picks those up.
+
+## TODO
+
+Runfiles libraries: are meant to hide this complexity and different launch schenarios.
 
 <hr>
 
@@ -221,7 +337,6 @@ Any target can be a data-dependency, files; filegroups; file-providing rules (e.
 
 
 - why runfiles are readonly, what to do if you need write access
-- why we need runfiles
 - why are there more files there than expected
 - tree layout (see also: --[no]legacy_external_runfiles)
 - runfiles of libs, and why
